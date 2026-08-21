@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tilmelding — Olle Markensten Musikundervisning</title>
+<style>
+  :root {
+    --ink: #1C2333;
+    --paper: #F7F5F0;
+    --brass: #B8863B;
+    --line: #DAD5C9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .card { width: 100%; max-width: 440px; }
+  h1 {
+    font-family: Georgia, serif;
+    font-size: 22px;
+    margin: 0 0 4px;
+  }
+  p.sub { color: #8b8578; font-size: 13px; margin: 0 0 24px; }
+  p.brand { font-family: Georgia, serif; font-style: italic; font-size: 14px; color: var(--brass); margin: 0 0 6px; }
+  label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b6558;
+    margin: 16px 0 6px;
+  }
+  input, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    background: #fff;
+    color: var(--ink);
+  }
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--brass);
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  p.hint { font-size: 12.5px; color: #8b8578; margin: 4px 0 0; line-height: 1.4; }
+  .slot-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .slot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    background: #fff;
+    margin: 0;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--ink);
+  }
+  .slot input { width: auto; padding: 0; }
+  .slot.andet { grid-column: span 3; }
+  #andet-tid-wrap { margin-top: 8px; }
+  #andet-tid-wrap.hidden { display: none; }
+  button {
+    width: 100%;
+    margin-top: 24px;
+    padding: 13px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: #2A3348; }
+  .hidden { display: none; }
+  .confirm {
+    text-align: center;
+    padding: 40px 20px;
+  }
+  .confirm h2 { font-family: Georgia, serif; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div id="form-view">
+      <p class="brand">Olles lille musikskole</p>
+      <h1>Skriv dig op</h1>
+      <p class="sub">Udfyld formularen, så vender vi tilbage med en tid.</p>
+
+      <!-- Netlify opsamler alle indsendelser automatisk, med tidsstempel,
+           i den rækkefølge de kommer ind — synligt i jeres Netlify-panel
+           under Forms, uden nogen egen database. Bekræftelsesmailen sendes
+           serverside via en Netlify Function (Resend), se netlify/functions. -->
+      <form name="tilmelding" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="signup-form">
+        <input type="hidden" name="form-name" value="tilmelding" />
+        <p class="hidden"><label>Undlad at udfylde: <input name="bot-field" /></label></p>
+
+        <label for="navn">Navn</label>
+        <input type="text" id="navn" name="navn" required>
+
+        <label for="alder">Alder</label>
+        <input type="number" id="alder" name="alder" min="1" max="120" required>
+
+        <label for="mail">E-mail</label>
+        <input type="email" id="mail" name="email" required>
+
+        <label for="tlf">Telefonnummer</label>
+        <input type="tel" id="tlf" name="telefon" required>
+
+        <label for="instrument">Instrument / ønske</label>
+        <input type="text" id="instrument" name="instrument" placeholder="fx klaver, guitar, lidt af begge" required>
+
+        <label>Ønskede tidspunkter om mandagen</label>
+        <p class="hint">Vælg gerne flere tidspunkter (30 min. pr. lektion), hvis der er flere der passer dig.</p>
+        <div class="slot-grid">
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="13:00–13:30"> 13:00</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="13:30–14:00"> 13:30</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="14:00–14:30"> 14:00</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="14:30–15:00"> 14:30</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="15:00–15:30"> 15:00</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="15:30–16:00"> 15:30</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="16:00–16:30"> 16:00</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="16:30–17:00"> 16:30</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="17:00–17:30"> 17:00</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="17:30–18:00"> 17:30</label>
+          <label class="slot andet"><input type="checkbox" id="andet-checkbox" name="tidspunkter" value="Andet tidspunkt"> Andre tidspunkter (skriv selv)</label>
+        </div>
+        <div id="andet-tid-wrap" class="hidden">
+          <input type="text" id="andet-tid" name="andet_tidspunkt" placeholder="fx kl. 10 om formiddagen">
+        </div>
+
+        <label for="kommentar">Kommentar (valgfrit)</label>
+        <p class="hint">Skriv gerne hvis noget passer dig bedre end andet — fx "helst kl. 15, men kl. 15.30 fungerer også".</p>
+        <textarea id="kommentar" name="kommentar"></textarea>
+
+        <button type="submit">Send tilmelding</button>
+      </form>
+    </div>
+
+    <div id="confirm-view" class="confirm hidden">
+      <h2>Tak!</h2>
+      <p>Din tilmelding er modtaget. Vi vender tilbage snarest.</p>
+    </div>
+  </div>
+
+  <script>
+    // Vis/skjul fritekstfeltet for "Andre tidspunkter".
+    const andetCheckbox = document.getElementById("andet-checkbox");
+    const andetWrap = document.getElementById("andet-tid-wrap");
+    andetCheckbox.addEventListener("change", function () {
+      andetWrap.classList.toggle("hidden", !andetCheckbox.checked);
+      if (!andetCheckbox.checked) document.getElementById("andet-tid").value = "";
+    });
+
+    // Enkel AJAX-indsendelse, så brugeren ikke forlader siden (Netlify-standard-mønster).
+    // Bekræftelsesmailen sendes automatisk serverside af Netlify Functionen
+    // netlify/functions/on-form-submit.mts, når Netlify registrerer indsendelsen.
+    const form = document.getElementById("signup-form");
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const valgteTider = form.querySelectorAll('input[name="tidspunkter"]:checked');
+      const kommentar = document.getElementById("kommentar").value.trim();
+      if (valgteTider.length === 0 && !kommentar) {
+        alert("Vælg mindst ét tidspunkt, eller skriv en kommentar om hvornår det passer dig.");
+        return;
+      }
+
+      const data = new FormData(form);
+      fetch("/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(data).toString(),
+      })
+        .then(() => {
+          document.getElementById("form-view").classList.add("hidden");
+          document.getElementById("confirm-view").classList.remove("hidden");
+        })
+        .catch(() => alert("Noget gik galt — prøv igen."));
+    });
+  </script>
+</body>
+</html>
