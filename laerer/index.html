@@ -1,640 +1,925 @@
-<!DOCTYPE html>
-<html lang="da">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lærerens værktøjer — Olles lille musikskole</title>
-<style>
-  :root {
-    --forest: #26332C;
-    --forest-deep: #1C2620;
-    --cream: #F2EEE3;
-    --cream-soft: #E8E2D1;
-    --ink: #262B22;
-    --gold: #9C7419;
-    --rose: #A54964;
-    --sage: #4C6B54;
-    --line: #DBD4C0;
-    --muted: #6b6558;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: radial-gradient(120% 120% at 50% 0%, var(--forest) 0%, var(--forest-deep) 100%);
-    color: var(--ink);
-    min-height: 100vh;
-    padding: 32px 16px 80px;
-  }
-  .app { max-width: 1040px; margin: 0 auto; }
-  .mockup-banner {
-    background: rgba(242, 238, 227, 0.92);
-    border: 1px dashed var(--gold);
-    color: var(--ink);
-    border-radius: 12px;
-    padding: 10px 16px;
-    font-size: 12.5px;
-    margin-bottom: 20px;
-    line-height: 1.5;
-  }
-  .mockup-banner strong { color: var(--gold); }
-  header { text-align: center; margin-bottom: 24px; }
-  p.eyebrow {
-    font-size: 11.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: var(--rose);
-    font-weight: 700;
-    margin: 0 0 8px;
-  }
-  h1 {
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 28px;
-    color: var(--cream);
-    margin: 0 0 20px;
-  }
-  nav.tabs {
-    display: inline-flex;
-    background: rgba(242, 238, 227, 0.12);
-    border-radius: 999px;
-    padding: 4px;
-    gap: 4px;
-  }
-  nav.tabs button {
-    border: none;
-    background: transparent;
-    color: var(--cream);
-    font-size: 14px;
-    font-weight: 600;
-    padding: 10px 22px;
-    border-radius: 999px;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-  }
-  nav.tabs button.active { background: var(--cream); color: var(--forest-deep); }
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Karla:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 
-  .card {
-    background: var(--cream);
-    border-radius: 20px;
-    padding: 24px 24px;
-    box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.4);
+<style>
+  /* ───────────────────────── Tokens ───────────────────────── */
+  :root {
+    --bg: #F6F2EA;
+    --bg-raised: #FFFDF9;
+    --ink: #1F2E28;
+    --ink-soft: #5B6B62;
+    --ink-faint: #93A199;
+    --border: #DED5C4;
+    --border-soft: #E9E2D3;
+    --accent: #B8863D;
+    --accent-ink: #FFFDF9;
+    --accent-wash: #EFE0C4;
+    --rose: #B4587A;
+    --rose-wash: #F3DEE6;
+    --sage: #5C7A63;
+    --sage-wash: #DEE7DE;
+    --shadow: 220 30% 12%;
+    --focus: #8A5B22;
   }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141F1A; --bg-raised: #1B2721; --ink: #F2ECDE; --ink-soft: #AAB8AC; --ink-faint: #6D7C71;
+      --border: #33443B; --border-soft: #263229; --accent: #D9A54F; --accent-ink: #1B2721; --accent-wash: #3A331F;
+      --rose: #D888A4; --rose-wash: #3A2530; --sage: #8FB097; --sage-wash: #223229; --focus: #E7BC6E;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141F1A; --bg-raised: #1B2721; --ink: #F2ECDE; --ink-soft: #AAB8AC; --ink-faint: #6D7C71;
+    --border: #33443B; --border-soft: #263229; --accent: #D9A54F; --accent-ink: #1B2721; --accent-wash: #3A331F;
+    --rose: #D888A4; --rose-wash: #3A2530; --sage: #8FB097; --sage-wash: #223229; --focus: #E7BC6E;
+  }
+
+  /* ───────────────────────── Base ───────────────────────── */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Karla", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: "Spectral", Georgia, serif; text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  button { font-family: inherit; }
+  ::selection { background: var(--accent-wash); }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
+
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 40px); }
+
+  /* ───────────────────────── Header ───────────────────────── */
+  .skiss-badge { background: var(--sage-wash); color: var(--sage); text-align: center; font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em; padding: 7px 12px; }
+  header.site { padding: 24px 0 16px; border-bottom: 1px solid var(--border-soft); }
+  .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .wordmark { display: flex; align-items: baseline; gap: 10px; }
+  .wordmark .mark { font-family: "Spectral", serif; font-style: italic; font-size: 24px; color: var(--accent); line-height: 1; }
+  .wordmark .name { font-family: "Spectral", serif; font-size: 19px; font-weight: 500; color: var(--ink); }
+  .tabs { display: inline-flex; background: var(--border-soft); border-radius: 999px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .tab-btn { border: none; background: transparent; color: var(--ink-soft); font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; white-space: nowrap; }
+  .tab-btn.active { background: var(--ink); color: var(--bg-raised); }
+  .tab-btn:hover:not(.active) { color: var(--ink); }
+
+  main { padding: 36px 0 80px; }
   .view { display: none; }
   .view.active { display: block; }
 
-  h2 {
-    font-family: Georgia, serif;
-    font-size: 19px;
-    margin: 0 0 4px;
-    color: var(--ink);
-  }
-  p.section-hint { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+  .page-head { margin-bottom: 26px; }
+  .page-head h1 { font-size: 23px; font-weight: 500; }
+  .page-head p { color: var(--ink-soft); font-size: 14px; margin-top: 6px; }
 
-  .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-  @media (max-width: 760px) { .grid-2col { grid-template-columns: 1fr; } }
+  /* ───────────────────────── Panels ───────────────────────── */
+  .panel { background: var(--bg-raised); border: 1px solid var(--border-soft); border-radius: 18px; padding: 26px clamp(18px, 3vw, 30px); }
+  .panel + .panel { margin-top: 20px; }
+  .section-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .section-sub { font-size: 12.5px; color: var(--ink-faint); margin: -6px 0 16px; }
+  .count-chip { font-family: "IBM Plex Mono", monospace; font-size: 11px; background: var(--border-soft); color: var(--ink-soft); padding: 1px 7px; border-radius: 999px; }
 
-  .waitlist-item {
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
-    background: #fff;
-  }
-  .waitlist-item .name { font-weight: 700; font-size: 15px; }
-  .waitlist-item .meta { color: var(--muted); font-size: 12.5px; margin: 4px 0 8px; line-height: 1.5; }
-  .waitlist-item .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-  .pill {
-    display: inline-block;
-    font-size: 11.5px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--cream-soft);
-    color: var(--ink);
-    border: 1px solid var(--line);
-  }
-  .btn {
-    border: none;
-    border-radius: 999px;
-    padding: 9px 16px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    background: var(--forest);
-    color: var(--cream);
-  }
-  .btn:hover { background: var(--forest-deep); }
-  .btn.secondary { background: transparent; color: var(--forest); border: 1px solid var(--forest); }
-  .btn.secondary:hover { background: rgba(38,51,44,0.06); }
-  .btn.small { padding: 6px 12px; font-size: 12px; }
-  .btn.gold { background: var(--gold); }
-  .btn.gold:hover { background: #7d5c14; }
+  /* ───────────────────────── Form ───────────────────────── */
+  .field { display: block; margin-top: 14px; }
+  .field span { display: block; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 5px; font-weight: 500; }
+  .field input, .field textarea, .field select { width: 100%; font-family: inherit; font-size: 14.5px; color: var(--ink); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 64px; font-family: inherit; }
 
-  .week-slot {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: #fff;
-    border: 1px solid var(--line);
-    margin-bottom: 8px;
-    font-size: 13.5px;
-  }
-  .week-slot .time { font-weight: 700; width: 92px; flex-shrink: 0; }
-  .swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .swatch.accent { background: var(--gold); }
-  .swatch.rose { background: var(--rose); }
-  .swatch.sage { background: var(--sage); }
-  .week-slot .who { flex: 1; }
-  .week-slot .instr { color: var(--muted); font-size: 12px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: none; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; padding: 12px 22px; transition: transform 0.1s ease, background 0.15s ease, opacity 0.15s ease; }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--ink); color: var(--bg-raised); }
+  .btn-primary:hover { background: var(--accent); color: var(--accent-ink); }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-primary:disabled:hover { background: var(--ink); color: var(--bg-raised); }
+  .btn-ghost { background: transparent; color: var(--ink-soft); border: 1px solid var(--border); padding: 9px 16px; font-size: 13px; }
+  .btn-ghost:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .btn-small { padding: 7px 14px; font-size: 12.5px; }
+  .btn-text { background: none; border: none; cursor: pointer; color: var(--accent); font-size: 12.5px; font-weight: 600; padding: 4px 2px; }
+  .btn-text:hover { text-decoration: underline; }
+  .btn-text.danger { color: var(--rose); }
+  .error-msg { color: var(--rose); font-size: 13px; margin-top: 12px; }
 
-  .section { margin-top: 8px; }
+  /* ───────────────────────── Waitlist rows ───────────────────────── */
+  .wl-row { border: 1px solid var(--border-soft); border-radius: 14px; padding: 14px 16px; }
+  .wl-row + .wl-row { margin-top: 10px; }
+  .wl-top { display: flex; align-items: flex-start; gap: 12px; }
+  .wl-num { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--border-soft); color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; font-size: 11.5px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .wl-info { flex: 1; min-width: 0; }
+  .wl-name { font-size: 14.5px; font-weight: 600; }
+  .wl-meta { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+  .wl-message { font-size: 13px; color: var(--ink-soft); font-style: italic; margin-top: 6px; }
+  .wl-prefs { font-size: 12px; color: var(--ink-faint); margin-top: 6px; }
+  .wl-prefs b { color: var(--ink-soft); font-weight: 600; }
+  .assign-form { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+  .assign-form .field { margin-top: 0; }
+  .assign-form label.check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-soft); padding-bottom: 11px; }
 
-  .month-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    margin-bottom: 16px;
-  }
-  .month-grid .dow {
-    font-size: 10.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--muted);
-    text-align: center;
-    padding-bottom: 4px;
-    font-weight: 700;
-  }
-  .day-cell {
-    aspect-ratio: 1;
-    border-radius: 10px;
-    background: #fff;
-    border: 1px solid var(--line);
-    font-size: 11.5px;
-    padding: 4px;
-    position: relative;
-    color: var(--muted);
-  }
-  .day-cell.empty { background: transparent; border: none; }
-  .day-cell .num { font-weight: 700; color: var(--ink); }
-  .day-cell .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin: 1px; }
-  .dot.grey { background: #b9b2a0; }
-  .dot.gold { background: var(--gold); }
-  .dot.sage { background: var(--sage); }
-  .dot.rose { background: var(--rose); }
-  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 20px; }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  /* ───────────────────────── Generic rows / lessons ───────────────────────── */
+  .row-list .divider-row:first-child { border-top: none; }
+  .divider-row { border-top: 1px solid var(--border-soft); padding: 12px 0; display: flex; align-items: center; gap: 12px; }
+  .mono-date { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-faint); width: 96px; flex-shrink: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mono-time { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-faint); width: 42px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .row-title { flex: 1; min-width: 0; font-size: 14px; }
+  .row-title .name { font-weight: 600; }
+  .tag { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 7px; vertical-align: 1px; }
+  .tag-instr { background: var(--border-soft); color: var(--ink-soft); }
+  .tag-trial { background: var(--rose-wash); color: var(--rose); }
+  .tag-done { background: var(--sage-wash); color: var(--sage); }
+  .tag-cancelled { background: var(--rose-wash); color: var(--rose); }
+  .tag-pending { background: var(--accent-wash); color: var(--accent); }
+  .tag-recurring { background: var(--sage-wash); color: var(--sage); }
+  .tag-tobill { background: var(--accent-wash); color: var(--accent); }
+  .draft-check { flex-shrink: 0; width: 17px; height: 17px; accent-color: var(--ink); cursor: pointer; }
+  .empty-state { text-align: center; color: var(--ink-faint); font-size: 13.5px; font-style: italic; padding: 26px 10px; }
+  .panel-footer { margin-top: 18px; display: flex; justify-content: flex-end; }
 
-  .invoice-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: #fff;
-    margin-bottom: 8px;
-    font-size: 13.5px;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .invoice-row .status {
-    font-size: 11px;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-  .status.draft { background: var(--cream-soft); color: var(--muted); }
-  .status.sent { background: rgba(156, 116, 25, 0.15); color: var(--gold); }
-  .status.paid { background: rgba(76, 107, 84, 0.15); color: var(--sage); }
+  /* ───────────────────────── Ugeoversigt (lærer) ───────────────────────── */
+  .week-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 22px; }
+  .week-col .week-day-label { font-size: 11px; font-weight: 700; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .week-slot { border: 1px solid var(--border-soft); border-radius: 10px; padding: 8px 10px; font-size: 12px; }
+  .week-slot + .week-slot { margin-top: 6px; }
+  .week-slot .wtime { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--ink-faint); display: block; margin-bottom: 2px; }
+  .week-slot .wname { font-weight: 600; font-size: 12.5px; display: block; }
+  .week-empty { color: var(--ink-faint); font-size: 18px; text-align: center; padding: 10px 0; opacity: 0.5; }
 
-  /* I dag */
-  .student-card {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid var(--line);
-    border-left: 6px solid var(--gold);
-    padding: 16px 18px;
-    margin-bottom: 14px;
-  }
-  .student-card.rose { border-left-color: var(--rose); }
-  .student-card.sage { border-left-color: var(--sage); }
-  .student-head { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-  .avatar {
-    width: 38px; height: 38px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 13px; color: #fff;
-    background: var(--gold); flex-shrink: 0;
-  }
-  .avatar.rose { background: var(--rose); }
-  .avatar.sage { background: var(--sage); }
-  .student-head .info { flex: 1; }
-  .student-head .name { font-weight: 700; font-size: 15px; }
-  .student-head .focus { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
-  .student-head .chevron { color: var(--muted); font-size: 13px; }
-  .last-note {
-    margin-top: 10px;
-    font-size: 12.5px;
-    color: var(--muted);
-    background: var(--cream-soft);
-    border-radius: 10px;
-    padding: 8px 10px;
-  }
-  .today-note-field { margin-top: 10px; }
-  .today-note-field label {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
-    color: var(--muted); font-weight: 700; display: block; margin-bottom: 4px;
-  }
-  textarea, input.text-input {
-    width: 100%;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 8px 10px;
-    font-family: inherit;
-    font-size: 13.5px;
-    resize: vertical;
-  }
-  .student-body { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; display: none; }
-  .student-body.open { display: block; }
-  .upload-row { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
-  .media-list { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; padding-left: 18px; }
-  .media-list li { margin-bottom: 2px; }
+  /* ───────────────────────── Månedskalender (lærer, afstemning) ───────────────────────── */
+  .cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-bottom: 16px; }
+  .cal-legend .tag { margin-left: 0; }
+  .cal-header { font-family: "Spectral", serif; font-size: 16px; font-weight: 500; margin-bottom: 12px; }
+  .cal-scroll { overflow-x: auto; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(84px, 1fr)); gap: 6px; min-width: 620px; margin-bottom: 22px; }
+  .cal-dow { font-size: 10.5px; font-weight: 700; color: var(--ink-faint); text-transform: uppercase; text-align: center; padding-bottom: 4px; }
+  .cal-cell { border: 1px solid var(--border-soft); border-radius: 10px; min-height: 76px; padding: 6px; background: var(--bg-raised); }
+  .cal-cell.out { opacity: 0.4; }
+  .cal-cell.today { border-color: var(--accent); border-width: 1.5px; }
+  .cal-daynum { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--ink-faint); margin-bottom: 4px; }
+  .cal-chip { font-size: 10px; font-weight: 600; border-radius: 5px; padding: 2px 5px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cal-chip.upcoming { background: var(--border-soft); color: var(--ink-soft); }
+  .cal-chip.tobill { background: var(--accent-wash); color: var(--accent); }
+  .cal-chip.billed { background: var(--sage-wash); color: var(--sage); }
+  .cal-chip.cancelled { background: var(--rose-wash); color: var(--rose); text-decoration: line-through; }
 
-  .toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
-    background: var(--forest-deep); color: var(--cream); padding: 12px 20px;
-    border-radius: 999px; font-size: 13.5px; opacity: 0; transition: all 0.25s;
-    pointer-events: none; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  /* ───────────────────────── Statistik / afstemning ───────────────────────── */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+  .stat-card { border: 1px solid var(--border-soft); border-radius: 14px; padding: 16px; }
+  .stat-card .num { font-family: "Spectral", serif; font-size: 26px; }
+  .stat-card .label { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+  .invoice-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--border-soft); }
+  .invoice-row:first-child { border-top: none; }
+  .invoice-row .iname { flex: 1; font-size: 14px; font-weight: 600; }
+  .invoice-row .iperiod { font-size: 11.5px; color: var(--ink-faint); margin-left: 8px; }
+  .invoice-row .iamount { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--ink-soft); margin-right: 14px; white-space: nowrap; }
+  .tag-sent { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .sync-note { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--sage); background: var(--sage-wash); padding: 9px 13px; border-radius: 10px; margin-bottom: 18px; }
+  .sync-note .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); flex-shrink: 0; }
 
-  .modal-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(28, 38, 32, 0.55);
-    align-items: center; justify-content: center; z-index: 40; padding: 16px;
+  /* ───────────────────────── Fakturaforhåndsvisning ───────────────────────── */
+  .invoice-preview { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 14px; padding: 18px 20px; margin: 6px 0 14px; }
+  .invoice-preview-head { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .ip-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 4px; }
+  .ip-strong { font-size: 14px; font-weight: 600; }
+  .ip-faint { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+  .invoice-preview-meta { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-soft); margin: 14px 0 10px; padding-top: 12px; border-top: 1px dashed var(--border); }
+  .invoice-lines { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .invoice-lines th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); padding-bottom: 6px; }
+  .invoice-lines td { padding: 6px 0; border-top: 1px solid var(--border-soft); }
+  .invoice-lines th:last-child, .invoice-lines td:last-child { text-align: right; }
+  .invoice-totals { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-top: 10px; }
+  .invoice-totals .line { display: flex; justify-content: space-between; gap: 24px; min-width: 200px; font-size: 13px; }
+  .invoice-totals .line.sub { color: var(--ink-faint); }
+  .invoice-totals .line.total { font-weight: 700; font-size: 15px; padding-top: 6px; border-top: 1px solid var(--border-soft); }
+  .ip-hint { font-size: 11.5px; color: var(--ink-faint); font-style: italic; margin-top: 14px; }
+  .invoice-preview-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* ───────────────────────── Elevfokus / elev-identitet (I dag) ───────────────────────── */
+  .lesson-card { border: 1px solid var(--border-soft); border-radius: 14px; padding: 14px 16px; border-left: 4px solid var(--border); }
+  .lesson-card + .lesson-card { margin-top: 10px; }
+  .lesson-card-top { display: flex; align-items: center; gap: 12px; }
+  .lesson-card-detail { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+  .upload-drop { display: flex; align-items: center; justify-content: center; gap: 8px; border: 2px dashed var(--border); border-radius: 12px; padding: 18px; color: var(--ink-faint); font-size: 13px; cursor: pointer; transition: border-color .15s ease; }
+  .upload-drop:hover { border-color: var(--accent); color: var(--accent); }
+  .lesson-focus { font-size: 12.5px; color: var(--ink-soft); margin: 8px 0 0; padding-left: 42px; }
+  .lesson-quicknote { margin-top: 12px; padding-left: 42px; }
+  .lesson-lastnote { font-size: 12.5px; color: var(--ink-soft); background: var(--border-soft); border-radius: 10px; padding: 8px 12px; line-height: 1.5; }
+  .lesson-lastnote .ll-label { display: block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); margin-bottom: 3px; }
+  .lesson-quicknote .field { margin-top: 8px; }
+  .lesson-card.color-accent { border-left-color: var(--accent); }
+  .lesson-card.color-rose { border-left-color: var(--rose); }
+  .lesson-card.color-sage { border-left-color: var(--sage); }
+  .lesson-avatar { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: "Spectral", serif; font-weight: 600; font-size: 12px; }
+  .lesson-avatar.color-accent { background: var(--accent-wash); color: var(--accent); }
+  .lesson-avatar.color-rose { background: var(--rose-wash); color: var(--rose); }
+  .lesson-avatar.color-sage { background: var(--sage-wash); color: var(--sage); }
+
+  /* ───────────────────────── Video / filrækker ───────────────────────── */
+  .song-group + .song-group { margin-top: 18px; }
+  .song-group .song-name { font-size: 12.5px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+  .video-row { border: 1px solid var(--border-soft); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+  .video-row + .video-row { margin-top: 8px; }
+  .video-play { flex-shrink: 0; width: 32px; height: 32px; border-radius: 9px; background: var(--accent-wash); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .video-info { flex: 1; min-width: 0; }
+  .video-info .vtitle { font-size: 13.5px; font-weight: 600; display: block; }
+  .video-info .vmeta { font-size: 11px; color: var(--ink-faint); margin-top: 2px; display: block; }
+
+  /* ───────────────────────── Toast ───────────────────────── */
+  #toast-stack { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 50; width: min(92vw, 440px); }
+  .toast { background: var(--ink); color: var(--bg-raised); border-radius: 12px; padding: 12px 16px; font-size: 13.5px; box-shadow: 0 8px 24px hsl(var(--shadow) / 0.28); display: flex; align-items: center; gap: 10px; animation: toast-in 0.22s ease; }
+  .toast .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  footer.site { border-top: 1px solid var(--border-soft); padding: 22px 0 40px; text-align: center; color: var(--ink-faint); font-size: 12.5px; }
+
+  @media (max-width: 640px) {
+    .assign-form { flex-direction: column; align-items: stretch; }
+    .mono-date { width: 64px; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .week-grid { grid-template-columns: repeat(2, 1fr); }
   }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: var(--cream); border-radius: 18px; padding: 24px; max-width: 420px; width: 100%;
-    max-height: 88vh; overflow-y: auto;
-  }
-  .modal h3 { font-family: Georgia, serif; margin: 0 0 12px; }
-  .modal label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); display: block; margin: 12px 0 4px; }
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
-  .invoice-lines { font-size: 13px; margin: 10px 0; }
-  .invoice-lines .line { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); }
-  .invoice-lines .total { font-weight: 700; border-top: 1px solid var(--ink); border-bottom: none; padding-top: 8px; margin-top: 4px; }
 </style>
-</head>
-<body>
-<div class="app">
-  <div class="mockup-banner">
-    <strong>Skitse — ikke koblet til rigtig database endnu.</strong> Dette er en klikbar mockup af lærerens Planlægning og "I dag", så du kan give feedback på indhold og flow, før jeg bygger den rigtige backend (rigtig venteliste fra Supabase, rigtig Google-kalender-oprettelse, rigtig e-conomic-faktura). Intet her rører tilmeldingssiden på <code>/tilmelding</code>.
-  </div>
-  <header>
-    <p class="eyebrow">Olles lille musikskole</p>
-    <h1>Lærerens værktøjer</h1>
-    <nav class="tabs">
-      <button class="tab active" data-tab="planlaegning">Planlægning</button>
-      <button class="tab" data-tab="idag">I dag</button>
-    </nav>
-  </header>
 
-  <section id="view-planlaegning" class="view active">
-    <div class="grid-2col">
-      <div class="card">
-        <h2>Venteliste</h2>
-        <p class="section-hint">Nye tilmeldinger fra /tilmelding. Tildel en fast tid for at flytte eleven til ugeoversigten.</p>
-        <div id="waitlist"></div>
-      </div>
-      <div class="card">
-        <h2>Ugeoversigt (mandag)</h2>
-        <p class="section-hint">Alle faste tider lige nu — udkast vises nedtonet indtil de er publiceret.</p>
-        <div id="week-grid"></div>
-      </div>
+<div class="skiss-badge">Klikbar skitse — samme Planlægning og I dag du allerede har set i elevportal-skitsen, nu på sin egen adresse. Ingen rigtige kalenderinvitationer, mails eller uploads her, og intet rører tilmeldingssiden på /tilmelding.</div>
+
+<header class="site">
+  <div class="wrap brand-row">
+    <div class="wordmark"><span class="mark">♪</span><span class="name">Olles lille musikskole — lærer</span></div>
+    <div class="tabs" role="tablist" aria-label="Vis side">
+      <button class="tab-btn active" data-tab="planning" role="tab" aria-selected="true" id="tab-btn-planning">Planlægning</button>
+      <button class="tab-btn" data-tab="today" role="tab" aria-selected="false" id="tab-btn-today">I dag</button>
     </div>
+  </div>
+</header>
 
-    <div class="card section">
-      <h2>Afstemning</h2>
-      <p class="section-hint">August 2026 — grå = kommende, gul = skal faktureres, grøn = faktureret, rosa = aflyst.</p>
-      <div class="legend">
-        <span><span class="dot grey" style="display:inline-block"></span> Kommende</span>
-        <span><span class="dot gold" style="display:inline-block"></span> Skal faktureres</span>
-        <span><span class="dot sage" style="display:inline-block"></span> Faktureret</span>
-        <span><span class="dot rose" style="display:inline-block"></span> Aflyst</span>
+<main>
+  <!-- ═══════════════════════ PLANLÆGNING ═══════════════════════ -->
+  <section class="view active" id="view-planning">
+    <div class="wrap">
+      <div class="page-head"><h1>Planlægning</h1><p>Tildel faste tider i ro og mag — intet oprettes i Google Kalender, før du udgiver.</p></div>
+
+      <div class="panel">
+        <div class="section-label"><span>Venteliste</span><span class="count-chip" id="waitlist-count">0</span></div>
+        <p class="section-sub">I den rækkefølge eleverne har skrevet sig op.</p>
+        <div id="waitlist-list"></div>
       </div>
-      <div class="month-grid" id="month-grid"></div>
-      <h2 style="margin-top:22px;">Fakturaer</h2>
-      <div id="invoices"></div>
+
+      <div class="panel">
+        <div class="section-label"><span>Skema-udkast</span><span class="count-chip" id="draft-count">0</span></div>
+        <p class="section-sub">Test og ret så meget du vil. Markér dem du er færdig med — resten røres ikke.</p>
+        <div class="row-list" id="draft-list"></div>
+        <div class="panel-footer">
+          <button class="btn btn-primary" id="publish-btn" disabled>Opret i Google Kalender (valgte)</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="section-label"><span>Faste tider lige nu</span><span class="count-chip" id="active-count">0</span></div>
+        <p class="section-sub">Ugeoversigt — hele skemaet på én gang.</p>
+        <div class="week-grid" id="week-grid"></div>
+        <div class="row-list" id="active-list"></div>
+      </div>
+
+      <div class="panel">
+        <div class="section-label"><span>Afstemning</span></div>
+        <div class="sync-note"><span class="dot"></span>Sidst afstemt med Google Kalender: i dag kl. 07:12 (automatisk hver morgen)</div>
+        <div class="cal-legend" id="cal-legend"></div>
+        <div class="cal-header" id="cal-month-label"></div>
+        <div class="cal-scroll"><div class="cal-grid" id="cal-grid"></div></div>
+        <div class="stat-row">
+          <div class="stat-card"><div class="num" id="stat-upcoming">0</div><div class="label">Kommende</div></div>
+          <div class="stat-card"><div class="num" id="stat-tobill">0</div><div class="label">Skal faktureres</div></div>
+          <div class="stat-card"><div class="num" id="stat-billed">0</div><div class="label">Fakturerede</div></div>
+          <div class="stat-card"><div class="num" id="stat-cancelled">0</div><div class="label">Aflyste</div></div>
+        </div>
+        <div class="section-label"><span>Lektioner</span></div>
+        <p class="section-sub">Seneste og kommende tider, med status.</p>
+        <div class="row-list" id="reconciliation-list"></div>
+        <div class="section-label" style="margin-top:24px;"><span>Fakturaer</span></div>
+        <p class="section-sub">Oprettes automatisk som kladde i slutningen af hver måned — du godkender, så oprettes fakturaen i e-conomic, hvor du trykker "send" en sidste gang.</p>
+        <div class="row-list" id="invoices-list"></div>
+      </div>
     </div>
   </section>
 
-  <section id="view-idag" class="view">
-    <div class="card">
-      <h2>I dag — mandag</h2>
-      <p class="section-hint">Se hvad hver elev arbejder med uden at åbne kortet. Åbn kortet for at registrere fremmøde og sende en note.</p>
-      <div id="today-cards"></div>
+  <!-- ═══════════════════════ I DAG ═══════════════════════ -->
+  <section class="view" id="view-today">
+    <div class="wrap">
+      <div class="page-head"><h1>I dag — onsdag</h1><p>Skriv hurtige noter til hver elev uden at åbne siden — og når lektionen er slut, send en note til eleven og læg videoer og filer op.</p></div>
+      <div id="today-list"></div>
     </div>
   </section>
-</div>
+</main>
 
-<div class="modal-overlay" id="assign-modal">
-  <div class="modal">
-    <h3>Tildel fast tid</h3>
-    <p id="assign-student-name" style="margin:0; color:var(--muted); font-size:13.5px;"></p>
-    <label>Ugedag</label>
-    <select id="assign-weekday" class="text-input">
-      <option>Mandag</option>
-    </select>
-    <label>Tidspunkt</label>
-    <select id="assign-time" class="text-input">
-      <option>13:00–13:30</option>
-      <option>13:30–14:00</option>
-      <option>14:00–14:30</option>
-      <option>14:30–15:00</option>
-      <option>15:00–15:30</option>
-      <option>15:30–16:00</option>
-      <option>16:00–16:30</option>
-      <option>16:30–17:00</option>
-      <option>17:00–17:30</option>
-      <option>17:30–18:00</option>
-    </select>
-    <label>Instrument (til prissætning)</label>
-    <select id="assign-instrument" class="text-input">
-      <option>Klaver</option>
-      <option>Guitar</option>
-      <option>Sang</option>
-    </select>
-    <div class="modal-actions">
-      <button class="btn secondary small" onclick="closeAssignModal()">Annullér</button>
-      <button class="btn small" onclick="confirmAssign()">Gem som udkast</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="invoice-modal">
-  <div class="modal">
-    <h3>Se &amp; godkend faktura</h3>
-    <div id="invoice-modal-body"></div>
-    <div class="modal-actions">
-      <button class="btn secondary small" onclick="closeInvoiceModal()">Luk</button>
-      <button class="btn gold small" id="invoice-confirm-btn" onclick="confirmInvoice()">Bekræft &amp; opret i e-conomic</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
+<footer class="site">Skitse til lærerens værktøjer · Planlægning og I dag, samme datamodel som backend-koden på /tilmelding.<br><span style="display:inline-block;margin-top:6px;">Kommentarer og ønsker til flow eller indhold modtages meget gerne, før den kobles til rigtig database og Google Kalender.</span></footer>
+<div id="toast-stack"></div>
 
 <script>
+  const WEEKDAYS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag"];
+  const WEEKDAYS_SHORT = ["Man", "Tir", "Ons", "Tor", "Fre"];
+  let uid = 200;
+  const nextId = () => "id" + (uid++);
+
+  function toast(msg) {
+    const stack = document.getElementById("toast-stack");
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.innerHTML = '<span class="dot"></span><span>' + msg + "</span>";
+    stack.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 250);
+    }, 3600);
+  }
+  function addDays(n) { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+  function formatDate(iso) { const d = new Date(iso + "T00:00:00"); return d.toLocaleDateString("da-DK", { weekday: "short", day: "numeric", month: "short" }); }
+
+  // ───────────────────────── Faner ─────────────────────────
+  document.querySelectorAll(".tab-btn").forEach((btn) => btn.addEventListener("click", () => switchView(btn.dataset.tab)));
+  function switchView(name) {
+    ["planning", "today"].forEach((v) => document.getElementById("view-" + v).classList.toggle("active", v === name));
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      const active = btn.dataset.tab === name;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-selected", active);
+    });
+    if (name === "planning") renderPlanning();
+    if (name === "today") renderToday();
+  }
+
+  // ═══════════════════════ STATE ═══════════════════════
   const state = {
+    slots: [
+      { id: "s1", weekday: 0, start: "15:00", end: "16:00" },
+      { id: "s2", weekday: 2, start: "16:00", end: "17:00" },
+      { id: "s3", weekday: 2, start: "17:00", end: "18:00" },
+      { id: "s4", weekday: 3, start: "15:30", end: "16:30" },
+      { id: "s5", weekday: 4, start: "14:00", end: "15:00" },
+    ],
     waitlist: [
-      { id: 1, navn: "Freja Holm", alder: 9, instrument: "klaver, lidt sang", tidspunkter: ["15:00–15:30", "15:30–16:00"], andet: "", kommentar: "Helst lige efter skole" },
-      { id: 2, navn: "Oskar Lind", alder: 12, instrument: "guitar", tidspunkter: ["Andet tidspunkt"], andet: "Lørdag formiddag, fx kl. 10, eller en anden dag", kommentar: "" },
-      { id: 3, navn: "Sofie Krag", alder: 7, instrument: "sang, lidt klaver", tidspunkter: ["13:00–13:30"], andet: "", kommentar: "Første gang med musikundervisning, er lidt nervøs" }
+      { id: "w1", name: "Nora Bergstrøm", email: "nora.b@mail.dk", phone: "+45 22 14 90 03", instrument: "Piano", message: "Har spillet i to år, vil gerne fortsætte hos en rigtig lærer.", preferredSlotIds: ["s1", "s4"], agoLabel: "for 4 dage siden" },
+      { id: "w2", name: "Malte Sørensen", email: "malte.sorensen@gmail.com", phone: "+45 20 23 31 98", instrument: "Guitar", message: "", preferredSlotIds: ["s2", "s3"], agoLabel: "for 2 dage siden" },
+      { id: "w3", name: "Agnes Møller", email: "agnes.moller@outlook.com", phone: "+45 51 88 04 27", instrument: "Sang", message: "Nybegynder, lidt nervøs men opsat!", preferredSlotIds: ["s5"], agoLabel: "i går" },
+      { id: "w4", name: "Viktor Holm", email: "viktor.holm99@gmail.com", phone: "+45 27 41 05 56", instrument: "Piano", message: "", preferredSlotIds: ["s1", "s2"], agoLabel: "for 5 timer siden" },
     ],
-    assignments: [
-      { id: 1, navn: "Emma Sørensen", weekday: "Mandag", time: "14:00–14:30", instrument: "Klaver", status: "published", color: "accent" },
-      { id: 2, navn: "Nora Bergstrøm", weekday: "Mandag", time: "15:00–15:30", instrument: "Sang", status: "published", color: "rose" },
-      { id: 3, navn: "Malte Sørensen", weekday: "Mandag", time: "16:30–17:00", instrument: "Guitar", status: "published", color: "sage" }
+    draftAssignments: [],
+    activeAssignments: [
+      { id: "a1", name: "Emma S.", email: "emma.s@mail.com", instrument: "Piano", weekday: 2, start: "14:00", end: "14:45", toInvoice: 3, invoiced: 12 },
+      { id: "a2", name: "Lucas B.", email: "lucas.b@mail.com", instrument: "Guitar", weekday: 2, start: "15:00", end: "15:45", toInvoice: 1, invoiced: 5 },
+      { id: "a3", name: "Ida K.", email: "ida.k@mail.com", instrument: "Piano", weekday: 4, start: "16:30", end: "17:15", toInvoice: 0, invoiced: 0 },
     ],
-    today: [
-      { id: 1, navn: "Emma Sørensen", color: "accent", currentFocus: "Skalaer i C-dur, første simple melodi", lastNote: "11. aug: Øvede C-dur skala. Næste gang: begynde på et kort melodi-uddrag.", prepNote: "", draftStudentNote: "", open: false, videos: [], files: [] },
-      { id: 2, navn: "Nora Bergstrøm", color: "rose", currentFocus: "Åndedræt og tonedannelse", lastNote: "11. aug: Arbejdede med støtte i vejrtrækningen.", prepNote: "", draftStudentNote: "", open: false, videos: [], files: [] },
-      { id: 3, navn: "Malte Sørensen", color: "sage", currentFocus: "Barré-akkorder", lastNote: "4. aug: Introduceret F-dur barré — øv langsomt.", prepNote: "", draftStudentNote: "", open: false, videos: [], files: [] }
-    ],
-    invoices: [
-      { id: 1, navn: "Emma Sørensen", period: "Juli 2026", amount: 1800, status: "sent", lines: [["1. jul","Klaver, 30 min",450],["8. jul","Klaver, 30 min",450],["15. jul","Klaver, 30 min",450],["22. jul","Klaver, 30 min",450]] },
-      { id: 2, navn: "Nora Bergstrøm", period: "Juli 2026", amount: 1920, status: "paid", lines: [["1. jul","Sang, 30 min",480],["8. jul","Sang, 30 min",480],["15. jul","Sang, 30 min",480],["22. jul","Sang, 30 min",480]] }
-    ],
-    monthDots: {
-      3: ["grey"], 10: ["grey"], 17: ["grey"], 24: ["grey"], 31: ["grey"],
-      6: ["gold"], 13: ["gold"], 20: ["rose"]
-    }
+    selectedDraftIds: new Set(),
   };
 
-  let pendingAssignId = null;
+  function slotLabel(weekday, start, end) { return WEEKDAYS_SHORT[weekday] + " " + start.slice(0, 5) + "–" + end.slice(0, 5); }
 
-  function showToast(msg) {
-    const t = document.getElementById("toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), 2600);
-  }
-
-  function switchTab(tab) {
-    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
-    document.getElementById("view-planlaegning").classList.toggle("active", tab === "planlaegning");
-    document.getElementById("view-idag").classList.toggle("active", tab === "idag");
-  }
-  document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
-
-  function renderWaitlist() {
-    const el = document.getElementById("waitlist");
-    if (state.waitlist.length === 0) {
-      el.innerHTML = '<p class="section-hint">Ingen på ventelisten lige nu.</p>';
-      return;
-    }
-    el.innerHTML = state.waitlist.map(w => `
-      <div class="waitlist-item">
-        <div class="name">${w.navn} <span style="font-weight:400;color:var(--muted);font-size:12.5px;">(${w.alder} år)</span></div>
-        <div class="meta">Ønsker: ${w.instrument}${w.kommentar ? " — " + w.kommentar : ""}</div>
-        <div class="pill-row">
-          ${w.tidspunkter.map(t => `<span class="pill">${t === "Andet tidspunkt" && w.andet ? w.andet : t}</span>`).join("")}
-        </div>
-        <button class="btn small" onclick="openAssignModal(${w.id})">Tildel fast tid</button>
-      </div>
-    `).join("");
+  // ═══════════════════════ PLANLÆGNING ═══════════════════════
+  function renderPlanning() {
+    renderWaitlist();
+    renderDrafts();
+    renderWeekGrid();
+    renderActive();
+    renderStats();
   }
 
   function renderWeekGrid() {
-    const el = document.getElementById("week-grid");
-    if (state.assignments.length === 0) {
-      el.innerHTML = '<p class="section-hint">Ingen faste tider endnu.</p>';
-      return;
-    }
-    const sorted = [...state.assignments].sort((a, b) => a.time.localeCompare(b.time));
-    el.innerHTML = sorted.map(a => `
-      <div class="week-slot" style="${a.status === "draft" ? "opacity:0.6;" : ""}">
-        <span class="swatch ${a.color}"></span>
-        <span class="time">${a.time}</span>
-        <span class="who">${a.navn}<div class="instr">${a.instrument}${a.status === "draft" ? " — udkast" : ""}</div></span>
-        ${a.status === "draft" ? `<button class="btn small gold" onclick="publishAssignment(${a.id})">Opret i Google Kalender</button>` : ""}
-      </div>
-    `).join("");
+    const grid = document.getElementById("week-grid");
+    grid.innerHTML = "";
+    WEEKDAYS.forEach((day, wd) => {
+      const col = document.createElement("div");
+      col.className = "week-col";
+      const dayAssignments = state.activeAssignments.filter((a) => a.weekday === wd).sort((a, b) => a.start.localeCompare(b.start));
+      col.innerHTML =
+        '<p class="week-day-label">' + WEEKDAYS_SHORT[wd] + "</p>" +
+        (dayAssignments.length
+          ? dayAssignments.map((a) => '<div class="week-slot"><span class="wtime">' + a.start.slice(0, 5) + "–" + a.end.slice(0, 5) + '</span><span class="wname">' + a.name + "</span></div>").join("")
+          : '<div class="week-empty">—</div>');
+      grid.appendChild(col);
+    });
   }
 
-  function renderMonthGrid() {
-    const el = document.getElementById("month-grid");
-    const dows = ["Man","Tir","Ons","Tor","Fre","Lør","Søn"];
-    let html = dows.map(d => `<div class="dow">${d}</div>`).join("");
-    // August 2026 starts on a Saturday; 31 days. Leading empty cells = 5 (Man,Tir,Ons,Tor,Fre before Lør 1.).
-    const leading = 5;
-    for (let i = 0; i < leading; i++) html += '<div class="day-cell empty"></div>';
-    for (let day = 1; day <= 31; day++) {
-      const dots = (state.monthDots[day] || []).map(c => `<span class="dot ${c}"></span>`).join("");
-      html += `<div class="day-cell"><div class="num">${day}</div>${dots}</div>`;
-    }
-    el.innerHTML = html;
+  function renderWaitlist() {
+    const list = document.getElementById("waitlist-list");
+    document.getElementById("waitlist-count").textContent = state.waitlist.length;
+    if (state.waitlist.length === 0) { list.innerHTML = '<p class="empty-state">Ingen har skrevet sig op endnu.</p>'; return; }
+
+    list.innerHTML = "";
+    state.waitlist.forEach((signup, i) => {
+      const row = document.createElement("div");
+      row.className = "wl-row";
+      const preferred = signup.preferredSlotIds.map((id) => state.slots.find((s) => s.id === id)).filter(Boolean);
+      row.innerHTML =
+        '<div class="wl-top"><span class="wl-num">' + (i + 1) + "</span>" +
+        '<div class="wl-info"><p class="wl-name">' + signup.name + "</p>" +
+        '<p class="wl-meta">' + signup.email + " · " + signup.phone + " · " + signup.instrument + " · " + signup.agoLabel + "</p>" +
+        (signup.message ? '<p class="wl-message">“' + signup.message + '”</p>' : "") +
+        '<p class="wl-prefs"><b>Ønsker:</b> ' + (preferred.map((s) => slotLabel(s.weekday, s.start, s.end)).join(", ") || "—") + "</p></div>" +
+        '<button class="btn-text assign-toggle">Tildel fast tid</button></div>' +
+        '<div class="assign-form" hidden></div>';
+
+      row.querySelector(".assign-toggle").addEventListener("click", () => {
+        const form = row.querySelector(".assign-form");
+        const isOpen = !form.hidden;
+        form.hidden = isOpen ? true : false;
+        if (!isOpen) {
+          form.innerHTML = buildAssignFormHtml(preferred);
+          wireAssignForm(form, signup, preferred);
+        }
+      });
+      list.appendChild(row);
+    });
   }
+
+  function buildAssignFormHtml(preferred) {
+    return (
+      '<label class="field"><span>Ugedag &amp; tid</span><select class="assign-slot">' +
+      preferred.map((s) => '<option value="' + s.id + '">' + slotLabel(s.weekday, s.start, s.end) + " hver uge</option>").join("") +
+      "</select></label>" +
+      '<label class="check"><input type="checkbox" class="assign-trial"> Prøvelektion (kun denne gang)</label>' +
+      '<button class="btn btn-primary btn-small assign-submit">Læg i udkast</button>'
+    );
+  }
+
+  function wireAssignForm(form, signup, preferred) {
+    form.querySelector(".assign-submit").addEventListener("click", () => {
+      const slotId = form.querySelector(".assign-slot").value;
+      const isTrial = form.querySelector(".assign-trial").checked;
+      const slot = preferred.find((s) => s.id === slotId) || state.slots.find((s) => s.id === slotId);
+      if (!slot) return;
+
+      state.draftAssignments.push({
+        id: nextId(), name: signup.name, email: signup.email, phone: signup.phone, instrument: signup.instrument,
+        weekday: slot.weekday, start: slot.start, end: slot.end, isTrial,
+        waitlistId: signup.id, preferredSlotIds: signup.preferredSlotIds,
+      });
+      state.waitlist = state.waitlist.filter((s) => s.id !== signup.id);
+      renderPlanning();
+      toast(signup.name + " tilføjet til skema-udkastet — intet sendt endnu.");
+    });
+  }
+
+  function renderDrafts() {
+    const list = document.getElementById("draft-list");
+    document.getElementById("draft-count").textContent = state.draftAssignments.length;
+    document.getElementById("publish-btn").textContent = "Opret i Google Kalender (" + state.selectedDraftIds.size + ")";
+    document.getElementById("publish-btn").disabled = state.selectedDraftIds.size === 0;
+
+    if (state.draftAssignments.length === 0) { list.innerHTML = '<p class="empty-state">Intet i udkastet lige nu.</p>'; return; }
+
+    list.innerHTML = "";
+    state.draftAssignments.forEach((a) => {
+      const row = document.createElement("div");
+      row.className = "divider-row";
+      row.innerHTML =
+        '<input type="checkbox" class="draft-check" ' + (state.selectedDraftIds.has(a.id) ? "checked" : "") + ">" +
+        '<span class="row-title"><span class="name">' + a.name + "</span>" +
+        '<span class="tag tag-instr">' + a.instrument + "</span>" +
+        (a.isTrial ? '<span class="tag tag-trial">Prøvelektion</span>' : '<span class="tag tag-recurring">' + slotLabel(a.weekday, a.start, a.end) + " hver uge</span>") +
+        "</span>" +
+        '<button class="btn-text danger remove-draft">Fjern</button>';
+
+      row.querySelector(".draft-check").addEventListener("change", (e) => {
+        e.target.checked ? state.selectedDraftIds.add(a.id) : state.selectedDraftIds.delete(a.id);
+        renderDrafts();
+      });
+      row.querySelector(".remove-draft").addEventListener("click", () => {
+        state.draftAssignments = state.draftAssignments.filter((d) => d.id !== a.id);
+        state.selectedDraftIds.delete(a.id);
+        state.waitlist.push({
+          id: a.waitlistId || nextId(), name: a.name, email: a.email, phone: a.phone || "",
+          instrument: a.instrument, message: "",
+          preferredSlotIds: a.preferredSlotIds && a.preferredSlotIds.length ? a.preferredSlotIds : state.slots.map((s) => s.id),
+          agoLabel: "lagt tilbage",
+        });
+        renderPlanning();
+      });
+      list.appendChild(row);
+    });
+  }
+
+  document.getElementById("publish-btn").addEventListener("click", () => {
+    const toPublish = state.draftAssignments.filter((a) => state.selectedDraftIds.has(a.id));
+    if (toPublish.length === 0) return;
+
+    state.draftAssignments = state.draftAssignments.filter((a) => !state.selectedDraftIds.has(a.id));
+    toPublish.forEach((a) => state.activeAssignments.push({
+      id: a.id, name: a.name, email: a.email, instrument: a.instrument,
+      weekday: a.weekday, start: a.start, end: a.end, isTrial: a.isTrial,
+      toInvoice: 0, invoiced: 0,
+    }));
+    state.selectedDraftIds.clear();
+    renderPlanning();
+    toast(
+      toPublish.length === 1
+        ? "Tilbagevendende kalenderinvitation oprettet til " + toPublish[0].name + " (" + slotLabel(toPublish[0].weekday, toPublish[0].start, toPublish[0].end) + ", hver uge indtil videre)."
+        : toPublish.length + " tilbagevendende serier oprettet i Google Kalender — én invitation pr. elev."
+    );
+  });
+
+  function renderActive() {
+    const list = document.getElementById("active-list");
+    document.getElementById("active-count").textContent = state.activeAssignments.length;
+    if (state.activeAssignments.length === 0) { list.innerHTML = '<p class="empty-state">Ingen faste tider endnu.</p>'; return; }
+
+    list.innerHTML = "";
+    state.activeAssignments.forEach((a) => {
+      const row = document.createElement("div");
+      row.className = "divider-row";
+      row.innerHTML =
+        '<span class="row-title"><span class="name">' + a.name + "</span>" +
+        '<span class="tag tag-instr">' + a.instrument + "</span>" +
+        '<span class="tag tag-recurring">' + slotLabel(a.weekday, a.start, a.end) + " hver uge</span>" +
+        (a.toInvoice > 0 ? '<span class="tag tag-tobill">' + a.toInvoice + " til fakturering</span>" : "") + "</span>" +
+        '<button class="btn-text danger cancel-one">Aflys næste gang</button>';
+
+      row.querySelector(".cancel-one").addEventListener("click", () => {
+        if (!confirm("Aflys næste lektion for " + a.name + "? Kun den dato fjernes fra kalenderen — resten af den faste tid ligger fast.")) return;
+        renderActive();
+        toast("Næste lektion for " + a.name + " aflyst — fjernet fra netop den dag i kalenderen, resten af serien er urørt.");
+      });
+      list.appendChild(row);
+    });
+  }
+
+  // status: "upcoming" (kommende) · "tobill" (gennemført, skal faktureres) · "billed" (faktureret) · "cancelled" (aflyst)
+  const CURATED_EVENTS = [
+    { name: "Oskar N.", instrument: "Guitar", date: addDays(-3), start: "14:30", status: "billed" },
+    { name: "Sofie W.", instrument: "Piano", date: addDays(-2), start: "17:00", status: "cancelled" },
+    { name: "William H.", instrument: "Piano", date: addDays(9), start: "15:00", status: "upcoming" },
+  ];
+  const STATUS_TAG = {
+    upcoming: '<span class="tag tag-instr">Kommende</span>',
+    tobill: '<span class="tag tag-tobill">Skal faktureres</span>',
+    billed: '<span class="tag tag-done">Faktureret</span>',
+    cancelled: '<span class="tag tag-cancelled">Aflyst</span>',
+  };
+  function classifyByDate(iso) {
+    const days = Math.round((new Date(iso + "T00:00:00") - new Date(new Date().toDateString())) / 86400000);
+    if (days >= 0) return "upcoming";
+    return -days > 7 ? "billed" : "tobill";
+  }
+  function datesForWeekday(weekdayIdx, weeksBack, weeksForward) {
+    const targetDow = weekdayIdx + 1;
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    const base = new Date(d);
+    base.setDate(base.getDate() + (targetDow - d.getDay()));
+    const dates = [];
+    for (let w = -weeksBack; w <= weeksForward; w++) {
+      const dt = new Date(base);
+      dt.setDate(dt.getDate() + w * 7);
+      dates.push(dt.toISOString().slice(0, 10));
+    }
+    return dates;
+  }
+  function buildReconciliationEvents() {
+    const events = [...CURATED_EVENTS];
+    state.activeAssignments.forEach((a) => {
+      datesForWeekday(a.weekday, 4, 4).forEach((iso) => {
+        events.push({ name: a.name, instrument: a.instrument, date: iso, start: a.start, status: classifyByDate(iso) });
+      });
+    });
+    return events.sort((x, y) => x.date.localeCompare(y.date) || x.start.localeCompare(y.start));
+  }
+
+  function renderMonthCalendar(events) {
+    const grid = document.getElementById("cal-grid");
+    const label = document.getElementById("cal-month-label");
+    document.getElementById("cal-legend").innerHTML = Object.values(STATUS_TAG).join("");
+    grid.innerHTML = "";
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const year = today.getFullYear(), month = today.getMonth();
+    const monthName = new Date(year, month, 1).toLocaleDateString("da-DK", { month: "long", year: "numeric" });
+    label.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+    const firstOfMonth = new Date(year, month, 1);
+    const lastOfMonth = new Date(year, month + 1, 0);
+    const startOffset = (firstOfMonth.getDay() + 6) % 7;
+    const gridStart = new Date(firstOfMonth);
+    gridStart.setDate(gridStart.getDate() - startOffset);
+    const totalCells = Math.ceil((startOffset + lastOfMonth.getDate()) / 7) * 7;
+    const todayIso = today.toISOString().slice(0, 10);
+
+    ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"].forEach((d) => {
+      const el = document.createElement("div");
+      el.className = "cal-dow";
+      el.textContent = d;
+      grid.appendChild(el);
+    });
+
+    for (let i = 0; i < totalCells; i++) {
+      const d = new Date(gridStart);
+      d.setDate(d.getDate() + i);
+      const iso = d.toISOString().slice(0, 10);
+      const inMonth = d.getMonth() === month;
+      const cell = document.createElement("div");
+      cell.className = "cal-cell" + (inMonth ? "" : " out") + (iso === todayIso ? " today" : "");
+      const dayEvents = events.filter((e) => e.date === iso);
+      cell.innerHTML =
+        '<div class="cal-daynum">' + d.getDate() + "</div>" +
+        dayEvents.map((e) => '<div class="cal-chip ' + e.status + '">' + e.name.split(" ")[0] + "</div>").join("");
+      grid.appendChild(cell);
+    }
+  }
+
+  const LESSON_PRICE = { Piano: 450, Guitar: 450, Sang: 480, Andet: 450 };
+  function formatKr(amount) { return amount.toLocaleString("da-DK") + " kr."; }
+
+  const invoices = [
+    { id: "inv1", name: "Emma S.", email: "emma.s@mail.com", instrument: "Piano", period: "August 2026", lessons: 3, amount: 3 * LESSON_PRICE.Piano, status: "draft",
+      lines: [
+        { date: "2026-08-05", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
+        { date: "2026-08-12", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
+        { date: "2026-08-19", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
+      ] },
+    { id: "inv2", name: "Lucas B.", email: "lucas.b@mail.com", instrument: "Guitar", period: "August 2026", lessons: 1, amount: 1 * LESSON_PRICE.Guitar, status: "draft",
+      lines: [{ date: "2026-08-19", desc: "Guitarlektion, 45 min", amount: LESSON_PRICE.Guitar }] },
+    { id: "inv3", name: "Oskar N.", email: "oskar.n@mail.com", instrument: "Guitar", period: "Juli 2026", lessons: 4, amount: 4 * LESSON_PRICE.Guitar, status: "sent",
+      lines: [
+        { date: "2026-07-01", desc: "Guitarlektion, 45 min", amount: LESSON_PRICE.Guitar },
+        { date: "2026-07-08", desc: "Guitarlektion, 45 min", amount: LESSON_PRICE.Guitar },
+        { date: "2026-07-15", desc: "Guitarlektion, 45 min", amount: LESSON_PRICE.Guitar },
+        { date: "2026-07-22", desc: "Guitarlektion, 45 min", amount: LESSON_PRICE.Guitar },
+      ] },
+    { id: "inv4", name: "Sofie W.", email: "sofie.w@mail.com", instrument: "Piano", period: "Juli 2026", lessons: 4, amount: 4 * LESSON_PRICE.Piano, status: "paid",
+      lines: [
+        { date: "2026-07-01", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
+        { date: "2026-07-08", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
+        { date: "2026-07-15", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
+        { date: "2026-07-22", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
+      ] },
+    { id: "inv5", name: "William H.", email: "william.h@mail.com", instrument: "Piano", period: "Juni 2026", lessons: 1, amount: 1 * LESSON_PRICE.Piano, status: "paid",
+      lines: [{ date: "2026-06-28", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano }] },
+  ];
+  const INVOICE_STATUS_LABEL = {
+    draft: '<span class="tag tag-tobill">Kladde</span>',
+    sent: '<span class="tag tag-sent">Sendt — afventer betaling</span>',
+    paid: '<span class="tag tag-done">Betalt</span>',
+  };
 
   function renderInvoices() {
-    const el = document.getElementById("invoices");
-    el.innerHTML = state.invoices.map(inv => `
-      <div class="invoice-row">
-        <div><strong>${inv.navn}</strong> — ${inv.period}, ${inv.amount} kr</div>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span class="status ${inv.status}">${inv.status === "draft" ? "Udkast" : inv.status === "sent" ? "Sendt" : "Betalt"}</span>
-          <button class="btn secondary small" onclick="openInvoiceModal(${inv.id})">${inv.status === "draft" ? "Se & godkend faktura" : "Se faktura"}</button>
-        </div>
-      </div>
-    `).join("");
+    const list = document.getElementById("invoices-list");
+    list.innerHTML = "";
+    if (invoices.length === 0) { list.innerHTML = '<p class="empty-state">Ingen fakturaer endnu.</p>'; return; }
+
+    invoices
+      .slice()
+      .sort((a, b) => (a.status === b.status ? 0 : a.status === "draft" ? -1 : b.status === "draft" ? 1 : a.status === "sent" ? -1 : 1))
+      .forEach((inv) => {
+        const row = document.createElement("div");
+        row.className = "invoice-row";
+        row.innerHTML =
+          '<span class="iname">' + inv.name + '<span class="iperiod">' + inv.period + " · " + inv.lessons + " lektioner</span></span>" +
+          '<span class="iamount">' + formatKr(inv.amount) + "</span>" +
+          INVOICE_STATUS_LABEL[inv.status] +
+          '<button class="btn-text toggle-preview" style="margin-left:10px;">' + (inv.status === "draft" ? "Se &amp; godkend faktura" : "Se faktura") + "</button>" +
+          (inv.status === "sent" ? '<button class="btn-text mark-paid" style="margin-left:10px;">Markér som betalt</button>' : "");
+
+        const preview = document.createElement("div");
+        preview.hidden = true;
+
+        row.querySelector(".toggle-preview").addEventListener("click", () => {
+          const isOpen = !preview.hidden;
+          preview.hidden = isOpen;
+          if (!isOpen) { preview.innerHTML = buildInvoicePreviewHtml(inv); wireInvoicePreview(preview, inv); }
+        });
+        const paidBtn = row.querySelector(".mark-paid");
+        if (paidBtn) {
+          paidBtn.addEventListener("click", () => {
+            inv.status = "paid";
+            renderInvoices();
+            toast("Faktura for " + inv.name + " markeret som betalt.");
+          });
+        }
+        list.appendChild(row);
+        list.appendChild(preview);
+      });
   }
 
-  function openAssignModal(id) {
-    pendingAssignId = id;
-    const w = state.waitlist.find(x => x.id === id);
-    document.getElementById("assign-student-name").textContent = `${w.navn}, ${w.alder} år — ønsker: ${w.instrument}`;
-    document.getElementById("assign-modal").classList.add("open");
+  function buildInvoicePreviewHtml(inv) {
+    const momsPart = Math.round(inv.amount - inv.amount / 1.25);
+    const lines = (inv.lines || [])
+      .map((l) => '<tr><td>' + formatDate(l.date) + "</td><td>" + l.desc + "</td><td>" + formatKr(l.amount) + "</td></tr>")
+      .join("");
+    return (
+      '<div class="invoice-preview">' +
+      '<div class="invoice-preview-head">' +
+      '<div><p class="ip-label">Fra</p><p class="ip-strong">Olles lille musikskole</p><p class="ip-faint">CVR-nr. — hentes automatisk fra e-conomic</p></div>' +
+      '<div><p class="ip-label">Til</p><p class="ip-strong">' + inv.name + "</p><p class=\"ip-faint\">" + inv.email + "</p></div>" +
+      "</div>" +
+      '<div class="invoice-preview-meta"><span>Periode: ' + inv.period + "</span><span>" + inv.lessons + " lektion" + (inv.lessons === 1 ? "" : "er") + "</span></div>" +
+      '<table class="invoice-lines"><thead><tr><th>Dato</th><th>Beskrivelse</th><th>Beløb</th></tr></thead><tbody>' + lines + "</tbody></table>" +
+      '<div class="invoice-totals"><div class="line sub"><span>Heraf moms (25%)</span><span>' + formatKr(momsPart) + "</span></div>" +
+      '<div class="line total"><span>I alt</span><span>' + formatKr(inv.amount) + "</span></div></div>" +
+      '<p class="ip-hint">Sådan kommer fakturaen til at se ud i e-conomic — beløb og momssats hentes fra jeres opsætning der, når den rigtige integration er bygget.</p>' +
+      (inv.status === "draft"
+        ? '<div class="invoice-preview-actions"><button class="btn btn-primary btn-small confirm-invoice">Bekræft &amp; opret i e-conomic</button><button class="btn-ghost btn-small close-preview">Luk</button></div>'
+        : "") +
+      "</div>"
+    );
   }
-  function closeAssignModal() {
-    document.getElementById("assign-modal").classList.remove("open");
-    pendingAssignId = null;
-  }
-  function confirmAssign() {
-    const w = state.waitlist.find(x => x.id === pendingAssignId);
-    if (!w) return;
-    const weekday = document.getElementById("assign-weekday").value;
-    const time = document.getElementById("assign-time").value;
-    const instrument = document.getElementById("assign-instrument").value;
-    const colors = ["accent", "rose", "sage"];
-    const color = colors[state.assignments.length % colors.length];
-    state.assignments.push({ id: Date.now(), navn: w.navn, weekday, time, instrument, status: "draft", color });
-    state.waitlist = state.waitlist.filter(x => x.id !== pendingAssignId);
-    closeAssignModal();
-    renderWaitlist();
-    renderWeekGrid();
-    showToast(`${w.navn} er tildelt ${time} som udkast — klar til at oprette i Google Kalender.`);
-  }
-  function publishAssignment(id) {
-    const a = state.assignments.find(x => x.id === id);
-    if (!a) return;
-    a.status = "published";
-    renderWeekGrid();
-    showToast(`Fast tid oprettet i Google Kalender for ${a.navn} — invitation sendt.`);
-  }
-
-  function openInvoiceModal(id) {
-    const inv = state.invoices.find(x => x.id === id);
-    const linesHtml = inv.lines.map(([d, desc, amt]) => `
-      <div class="line"><span>${d} — ${desc}</span><span>${amt} kr</span></div>
-    `).join("");
-    document.getElementById("invoice-modal-body").innerHTML = `
-      <p style="font-size:13px; color:var(--muted); margin:0 0 10px;">${inv.navn} — periode ${inv.period}</p>
-      <div class="invoice-lines">
-        ${linesHtml}
-        <div class="line total"><span>I alt (moms inkl.)</span><span>${inv.amount} kr</span></div>
-      </div>
-    `;
-    const btn = document.getElementById("invoice-confirm-btn");
-    if (inv.status === "draft") {
-      btn.style.display = "inline-block";
-      btn.dataset.id = id;
-    } else {
-      btn.style.display = "none";
+  function wireInvoicePreview(holder, inv) {
+    const confirmBtn = holder.querySelector(".confirm-invoice");
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", () => {
+        inv.status = "sent";
+        renderInvoices();
+        toast("Faktura oprettet i e-conomic — husk at trykke \"send\" der for at sende den til " + inv.name + " (" + formatKr(inv.amount) + ").");
+      });
     }
-    document.getElementById("invoice-modal").classList.add("open");
+    const closeBtn = holder.querySelector(".close-preview");
+    if (closeBtn) closeBtn.addEventListener("click", () => { holder.hidden = true; });
   }
-  function closeInvoiceModal() {
-    document.getElementById("invoice-modal").classList.remove("open");
-  }
-  function confirmInvoice() {
-    const id = Number(document.getElementById("invoice-confirm-btn").dataset.id);
-    const inv = state.invoices.find(x => x.id === id);
-    if (inv) inv.status = "sent";
-    closeInvoiceModal();
+
+  function renderStats() {
+    const events = buildReconciliationEvents();
+    renderMonthCalendar(events);
+
+    document.getElementById("stat-upcoming").textContent = events.filter((e) => e.status === "upcoming").length;
+    document.getElementById("stat-tobill").textContent = events.filter((e) => e.status === "tobill").length;
+    document.getElementById("stat-billed").textContent = events.filter((e) => e.status === "billed").length;
+    document.getElementById("stat-cancelled").textContent = events.filter((e) => e.status === "cancelled").length;
+
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const nearbyEvents = events.filter((e) => Math.abs((new Date(e.date + "T00:00:00") - new Date(todayIso + "T00:00:00")) / 86400000) <= 10);
+    const list = document.getElementById("reconciliation-list");
+    list.innerHTML = "";
+    nearbyEvents.forEach((e) => {
+      const row = document.createElement("div");
+      row.className = "divider-row";
+      row.innerHTML =
+        '<span class="mono-date">' + formatDate(e.date) + "</span>" +
+        '<span class="mono-time" style="width:auto;">' + e.start + "</span>" +
+        '<span class="row-title"><span class="name">' + e.name + "</span>" +
+        '<span class="tag tag-instr">' + e.instrument + "</span></span>" +
+        STATUS_TAG[e.status];
+      list.appendChild(row);
+    });
+
     renderInvoices();
-    showToast(`Faktura oprettet i e-conomic — husk at trykke "send" der for at sende den til ${inv.navn}.`);
   }
+
+  // ═══════════════════════ I DAG ═══════════════════════
+  const todayLessons = [
+    { id: "t1", name: "Emma S.", instrument: "Piano", start: "14:00", status: "upcoming", isTrial: false,
+      currentFocus: "Øver tonleiter C-dur og forbereder Für Elise til efterårskoncerten.",
+      prepNote: "", draftStudentNote: "",
+      history: [
+        { date: "2026-08-12", summary: "Gennemgik tonleiter C-dur, startede på Für Elise takt 1–8." },
+        { date: "2026-08-05", summary: "Repetition af sommerens stykker, snakkede om den nye sæson." },
+        { date: "2026-06-24", summary: "Sidste lektion før sommerpausen — opsummerede årets fremgang." },
+      ],
+      videos: [{ title: "Tonleiter C-dur — lektie", song: "Für Elise" }, { title: "Für Elise, første del", song: "Für Elise" }],
+      files: [] },
+    { id: "t2", name: "Lucas B.", instrument: "Guitar", start: "15:00", status: "upcoming", isTrial: false,
+      currentFocus: "Arbejder med F-barré og intro-riffet til \"Wonderwall\".",
+      prepNote: "", draftStudentNote: "",
+      history: [
+        { date: "2026-08-12", summary: "Introducerede F-barré, øvede overgang G→F→C." },
+        { date: "2026-08-05", summary: "Startede på \"Wonderwall\" — intro-riff." },
+      ],
+      videos: [],
+      files: [] },
+    { id: "t3", name: "Ida K.", instrument: "Piano", start: "16:30", status: "upcoming", isTrial: true,
+      currentFocus: "Prøvelektion — intet tidligere forløb endnu.",
+      prepNote: "Spørg ind til erfaring og hvad hun håber at lære.", draftStudentNote: "",
+      history: [],
+      videos: [],
+      files: [] },
+  ];
+  const STUDENT_COLOR_KEYS = ["accent", "rose", "sage"];
+  function studentColorKey(idx) { return STUDENT_COLOR_KEYS[idx % STUDENT_COLOR_KEYS.length]; }
+  function initials(name) { return name.split(" ").filter(Boolean).map((p) => p[0]).join("").toUpperCase().slice(0, 2); }
 
   function renderToday() {
-    const el = document.getElementById("today-cards");
-    el.innerHTML = state.today.map(s => `
-      <div class="student-card ${s.color}">
-        <div class="student-head" onclick="toggleToday(${s.id})">
-          <div class="avatar ${s.color}">${initials(s.navn)}</div>
-          <div class="info">
-            <div class="name">${s.navn}</div>
-            <div class="focus">Arbejder med: ${s.currentFocus}</div>
-          </div>
-          <div class="chevron">${s.open ? "▲" : "▼"}</div>
-        </div>
-        <div class="last-note">Sidste gang — ${s.lastNote}</div>
-        <div class="today-note-field">
-          <label>Note til i dag — hvad skal I kigge på?</label>
-          <textarea rows="2" oninput="updatePrepNote(${s.id}, this.value)">${s.prepNote}</textarea>
-        </div>
-        <div style="margin-top:10px;">
-          <button class="btn secondary small" onclick="toggleToday(${s.id})">${s.open ? "Luk" : "Åbn"}</button>
-        </div>
-        <div class="student-body ${s.open ? "open" : ""}">
-          <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700;">Note til eleven — hvad har I arbejdet med i dag?</label>
-          <textarea rows="2" style="margin-top:4px;" oninput="updateStudentNote(${s.id}, this.value)">${s.draftStudentNote}</textarea>
-          <div class="upload-row">
-            <button class="btn secondary small" onclick="addMedia(${s.id}, 'video')">+ Tilføj video</button>
-            <button class="btn secondary small" onclick="addMedia(${s.id}, 'file')">+ Tilføj fil (fx akkorder, PDF)</button>
-          </div>
-          ${s.videos.length ? `<div><strong style="font-size:12px;">Videoer</strong><ul class="media-list">${s.videos.map(v => `<li>${v}</li>`).join("")}</ul></div>` : ""}
-          ${s.files.length ? `<div><strong style="font-size:12px;">Filer</strong><ul class="media-list">${s.files.map(f => `<li>${f}</li>`).join("")}</ul></div>` : ""}
-          <div style="margin-top:12px;">
-            <button class="btn small" onclick="registerAttendance(${s.id})">Registrér fremmøde &amp; send note</button>
-          </div>
-        </div>
-      </div>
-    `).join("");
+    const el = document.getElementById("today-list");
+    el.innerHTML = "";
+    todayLessons.forEach((lesson, idx) => {
+      const card = document.createElement("div");
+      const colorKey = studentColorKey(idx);
+      card.className = "lesson-card color-" + colorKey;
+      const lastEntry = (lesson.history || []).slice().sort((a, b) => b.date.localeCompare(a.date))[0];
+      card.innerHTML =
+        '<div class="lesson-card-top"><span class="lesson-avatar color-' + colorKey + '">' + initials(lesson.name) + "</span>" +
+        '<span class="mono-time" style="width:auto;">' + lesson.start + "</span>" +
+        '<span class="row-title"><span class="name">' + lesson.name + "</span>" +
+        '<span class="tag tag-instr">' + lesson.instrument + "</span>" +
+        (lesson.isTrial ? '<span class="tag tag-trial">Prøvelektion</span>' : "") + "</span>" +
+        (lesson.status === "done" ? '<span class="tag tag-done">Fremmøde registreret</span>' : '<button class="btn-text open-lesson">Åbn</button>') +
+        "</div>" +
+        (lesson.currentFocus ? '<p class="lesson-focus">' + lesson.currentFocus + "</p>" : "") +
+        '<div class="lesson-quicknote">' +
+        (lastEntry ? '<p class="lesson-lastnote"><span class="ll-label">Sidste gang (' + formatDate(lastEntry.date) + ')</span>' + lastEntry.summary + "</p>" : "") +
+        '<label class="field"><span>Note til i dag — hvad skal I kigge på?</span><textarea class="prep-note-inline" placeholder="F.eks. tempo på venstre hånd, ny etude, spørg om koncertnervøsitet …">' + (lesson.prepNote || "") + "</textarea></label>" +
+        "</div>" +
+        '<div class="lesson-card-detail" hidden></div>';
+
+      const prepEl = card.querySelector(".prep-note-inline");
+      prepEl.addEventListener("blur", () => {
+        lesson.prepNote = prepEl.value;
+        toast("Note gemt til " + lesson.name + "s lektion i dag.");
+      });
+
+      const openBtn = card.querySelector(".open-lesson");
+      if (openBtn) {
+        openBtn.addEventListener("click", () => {
+          const detail = card.querySelector(".lesson-card-detail");
+          const isOpen = !detail.hidden;
+          detail.hidden = isOpen;
+          if (!isOpen) { detail.innerHTML = buildLessonDetailHtml(lesson); wireLessonDetail(detail, lesson); }
+        });
+      }
+      el.appendChild(card);
+    });
   }
-  function initials(navn) {
-    return navn.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+  function buildLessonDetailHtml(lesson) {
+    const videoGroups = {};
+    (lesson.videos || []).forEach((v) => (videoGroups[v.song] = videoGroups[v.song] || []).push(v));
+    const videoHtml = Object.keys(videoGroups).length
+      ? Object.entries(videoGroups).map(([song, vids]) =>
+          '<div class="song-group"><p class="song-name">' + song + "</p>" +
+          vids.map((v) => '<div class="video-row"><span class="video-play">▶</span><span class="video-info"><span class="vtitle">' + v.title + "</span></span></div>").join("") + "</div>"
+        ).join("")
+      : '<p class="empty-state" style="padding:12px 0;">Ingen videoer uploadet endnu.</p>';
+    const filesHtml = (lesson.files || []).length
+      ? (lesson.files || []).map((f) => '<div class="video-row"><span class="video-play">📄</span><span class="video-info"><span class="vtitle">' + f.title + "</span></span></div>").join("")
+      : '<p class="empty-state" style="padding:12px 0;">Ingen filer uploadet endnu.</p>';
+    const history = lesson.history || [];
+    const historyHtml = history.length
+      ? history
+          .slice()
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .map((h) => '<div class="divider-row" style="padding:9px 0;"><span class="mono-date">' + formatDate(h.date) + '</span><span class="row-title" style="font-size:13px;">' + h.summary + (h.sentToStudent ? ' <span class="tag tag-done" style="margin-left:6px;">Sendt til elev</span>' : "") + "</span></div>")
+          .join("")
+      : '<p class="empty-state" style="padding:12px 0;">Ingen tidligere lektioner endnu.</p>';
+    return (
+      '<label class="field" style="margin-top:0;"><span>Note til eleven — hvad har I arbejdet med i dag?</span><textarea class="student-note" placeholder="Skrives til eleven, når du registrerer fremmøde — vises på elevens egen side.">' + (lesson.draftStudentNote || "") + "</textarea></label>" +
+      '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">' + (lesson.isTrial ? "Prøvelektion — tilføjes til fakturering separat." : "Tilføjes blandt lektioner der skal faktureres.") + "</p>" +
+      '<button class="btn btn-primary btn-small register-attendance">Registrér fremmøde &amp; send note</button>' +
+      '<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">' +
+      '<div class="upload-drop add-video" style="flex:1;min-width:180px;">＋ Tilføj video</div>' +
+      '<div class="upload-drop add-file" style="flex:1;min-width:180px;">＋ Tilføj fil (fx akkorder, PDF)</div>' +
+      "</div>" +
+      '<div style="margin-top:16px;"><div class="section-label" style="margin-bottom:8px;"><span>Videoer</span></div>' + videoHtml + "</div>" +
+      '<div style="margin-top:14px;"><div class="section-label" style="margin-bottom:8px;"><span>Filer</span></div>' + filesHtml + "</div>" +
+      '<div style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--border);">' +
+      '<button class="btn-text toggle-history">Se tidligere lektioner (' + history.length + ")</button>" +
+      '<div class="history-list" hidden style="margin-top:6px;">' + historyHtml + "</div>" +
+      "</div>"
+    );
   }
-  function toggleToday(id) {
-    const s = state.today.find(x => x.id === id);
-    s.open = !s.open;
-    renderToday();
-  }
-  function updatePrepNote(id, val) {
-    const s = state.today.find(x => x.id === id);
-    s.prepNote = val;
-  }
-  function updateStudentNote(id, val) {
-    const s = state.today.find(x => x.id === id);
-    s.draftStudentNote = val;
-  }
-  function addMedia(id, type) {
-    const s = state.today.find(x => x.id === id);
-    const n = (type === "video" ? s.videos.length : s.files.length) + 1;
-    const label = type === "video" ? `Video ${n} — optaget i dag` : `Fil ${n} — akkorder.pdf`;
-    if (type === "video") s.videos.push(label); else s.files.push(label);
-    renderToday();
-    showToast(type === "video" ? "Video tilføjet (simuleret upload)." : "Fil tilføjet (simuleret upload).");
-  }
-  function registerAttendance(id) {
-    const s = state.today.find(x => x.id === id);
-    if (!s.draftStudentNote.trim()) {
-      showToast("Skriv en note til eleven først.");
-      return;
+  function wireLessonDetail(detail, lesson) {
+    const noteEl = detail.querySelector(".student-note");
+    if (noteEl) {
+      noteEl.addEventListener("input", () => { lesson.draftStudentNote = noteEl.value; });
     }
-    s.lastNote = `I dag: ${s.draftStudentNote}`;
-    s.draftStudentNote = "";
-    s.open = false;
-    renderToday();
-    showToast(`Fremmøde registreret for ${s.navn} — note sendt til eleven.`);
+    const histBtn = detail.querySelector(".toggle-history");
+    if (histBtn) {
+      histBtn.addEventListener("click", () => {
+        const histList = detail.querySelector(".history-list");
+        histList.hidden = !histList.hidden;
+      });
+    }
+    detail.querySelector(".register-attendance").addEventListener("click", () => {
+      lesson.status = "done";
+      const mine = state.activeAssignments.find((a) => a.name === lesson.name);
+      if (mine) mine.toInvoice = (mine.toInvoice || 0) + 1;
+
+      const noteText = (noteEl ? noteEl.value : "").trim();
+      const todayIso = new Date().toISOString().slice(0, 10);
+      if (noteText) {
+        lesson.history = lesson.history || [];
+        lesson.history.push({ date: todayIso, summary: noteText, sentToStudent: true });
+        lesson.draftStudentNote = "";
+      }
+
+      detail.hidden = true;
+      renderToday();
+      renderActive();
+      toast(
+        noteText
+          ? "Fremmøde registreret, og noten er sendt til " + lesson.name + "."
+          : "Fremmøde registreret for " + lesson.name + " — tilføjet blandt lektioner der skal faktureres."
+      );
+    });
+    detail.querySelector(".add-video").addEventListener("click", () => {
+      lesson.videos = lesson.videos || [];
+      const n = lesson.videos.length + 1;
+      lesson.videos.push({ title: "Optagelse " + n + " — tilføjet nu", song: "I dag" });
+      detail.innerHTML = buildLessonDetailHtml(lesson);
+      wireLessonDetail(detail, lesson);
+      toast("Video tilføjet — læg gerne flere op, én ad gangen.");
+    });
+    detail.querySelector(".add-file").addEventListener("click", () => {
+      lesson.files = lesson.files || [];
+      const n = lesson.files.length + 1;
+      lesson.files.push({ title: "Dokument " + n + " — tilføjet nu" });
+      detail.innerHTML = buildLessonDetailHtml(lesson);
+      wireLessonDetail(detail, lesson);
+      toast("Fil tilføjet — læg gerne flere op, én ad gangen.");
+    });
   }
 
-  renderWaitlist();
-  renderWeekGrid();
-  renderMonthGrid();
-  renderInvoices();
+  // ───────────────────────── Init ─────────────────────────
+  renderPlanning();
   renderToday();
 </script>
-</body>
-</html>
