@@ -3,17 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tilmelding — Olles lille musikskole</title>
+<title>Olles lille musikskole</title>
 <style>
   :root {
     --forest: #26332C;
     --forest-deep: #1C2620;
     --cream: #F2EEE3;
-    --cream-soft: #E8E2D1;
     --ink: #262B22;
     --gold: #9C7419;
     --rose: #A54964;
-    --line: #DBD4C0;
   }
   * { box-sizing: border-box; }
   body {
@@ -23,6 +21,7 @@
     color: var(--ink);
     display: flex;
     justify-content: center;
+    align-items: center;
     padding: 40px 16px;
     min-height: 100vh;
   }
@@ -33,7 +32,7 @@
     border-radius: 24px;
     padding: 40px 32px;
     box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.45);
-    align-self: center;
+    text-align: center;
   }
   p.eyebrow {
     font-size: 11.5px;
@@ -45,218 +44,30 @@
   }
   h1 {
     font-family: Georgia, "Times New Roman", serif;
-    font-size: 28px;
+    font-size: 26px;
     line-height: 1.2;
-    margin: 0 0 8px;
+    margin: 0 0 14px;
     color: var(--ink);
   }
-  h1 em {
-    font-style: italic;
-    color: var(--gold);
-  }
-  p.sub { color: #6b6558; font-size: 13.5px; margin: 0 0 28px; line-height: 1.5; }
-  label {
-    display: block;
-    font-size: 11.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #6b6558;
+  h1 em { font-style: italic; color: var(--gold); }
+  p.sub { color: #6b6558; font-size: 14px; margin: 0; line-height: 1.6; }
+  a.link {
+    display: inline-block;
+    margin-top: 24px;
+    color: var(--forest);
     font-weight: 600;
-    margin: 18px 0 6px;
+    text-decoration: none;
+    border-bottom: 1px solid var(--forest);
+    padding-bottom: 2px;
   }
-  input, textarea {
-    width: 100%;
-    padding: 12px 14px;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    font-size: 15px;
-    font-family: inherit;
-    background: #fff;
-    color: var(--ink);
-  }
-  input:focus, textarea:focus {
-    outline: none;
-    border-color: var(--gold);
-    box-shadow: 0 0 0 3px rgba(202, 154, 68, 0.18);
-  }
-  textarea { resize: vertical; min-height: 70px; }
-  p.hint { font-size: 12.5px; color: #6b6558; margin: 6px 0 0; line-height: 1.4; }
-  .slot-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-  .slot {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 10px 10px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    font-size: 13.5px;
-    cursor: pointer;
-    background: #fff;
-    margin: 0;
-    text-transform: none;
-    letter-spacing: normal;
-    font-weight: 500;
-    color: var(--ink);
-    transition: border-color 0.15s, background 0.15s;
-  }
-  .slot:has(input:checked) {
-    background: var(--forest);
-    border-color: var(--forest);
-    color: var(--cream);
-  }
-  .slot input { width: auto; padding: 0; accent-color: var(--forest); }
-  .slot.andet { grid-column: span 3; justify-content: flex-start; border-radius: 12px; }
-  #andet-tid-wrap { margin-top: 8px; }
-  #andet-tid-wrap.hidden { display: none; }
-  button {
-    width: 100%;
-    margin-top: 28px;
-    padding: 14px;
-    background: var(--forest);
-    color: var(--cream);
-    border: none;
-    border-radius: 999px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  button:hover { background: var(--forest-deep); }
-  .hidden { display: none; }
-  .confirm {
-    text-align: center;
-    padding: 32px 8px;
-  }
-  .confirm h2 { font-family: Georgia, serif; color: var(--ink); margin-bottom: 8px; }
-  .confirm p { color: #6b6558; font-size: 14.5px; line-height: 1.5; }
 </style>
 </head>
 <body>
   <div class="card">
-    <div id="form-view">
-      <p class="eyebrow">Olles lille musikskole</p>
-      <h1>Skriv dig <em>op</em></h1>
-      <p class="sub">Udfyld formularen, så vender jeg tilbage med en tid.</p>
-
-      <!-- Netlify opsamler alle indsendelser automatisk, med tidsstempel,
-           i den rækkefølge de kommer ind — synligt i Netlify-panelet under
-           Forms. Bekræftelsesmailen sendes serverside via en Netlify Function
-           (Resend), og tilmeldingen gemmes desuden i Supabase — se
-           netlify/functions/on-form-submit.mts og save-signup.mts. -->
-      <form name="tilmelding" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="signup-form">
-        <input type="hidden" name="form-name" value="tilmelding" />
-        <p class="hidden"><label>Undlad at udfylde: <input name="bot-field" /></label></p>
-
-        <label for="navn">Navn</label>
-        <input type="text" id="navn" name="navn" required>
-
-        <label for="alder">Alder</label>
-        <input type="number" id="alder" name="alder" min="1" max="120" required>
-
-        <label for="mail">E-mail</label>
-        <input type="email" id="mail" name="email" required>
-
-        <label for="tlf">Telefonnummer</label>
-        <input type="tel" id="tlf" name="telefon" required>
-
-        <label for="instrument">Instrument / ønske</label>
-        <input type="text" id="instrument" name="instrument" placeholder="fx klaver, guitar, lidt af begge" required>
-
-        <label>Ønskede tidspunkter om mandagen</label>
-        <p class="hint">Vælg gerne flere tidspunkter (30 min. pr. lektion), hvis der er flere der passer dig.</p>
-        <div class="slot-grid">
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="13:00–13:30"> 13:00</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="13:30–14:00"> 13:30</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="14:00–14:30"> 14:00</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="14:30–15:00"> 14:30</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="15:00–15:30"> 15:00</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="15:30–16:00"> 15:30</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="16:00–16:30"> 16:00</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="16:30–17:00"> 16:30</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="17:00–17:30"> 17:00</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="17:30–18:00"> 17:30</label>
-          <label class="slot andet"><input type="checkbox" id="andet-checkbox" name="tidspunkter" value="Andet tidspunkt"> Andre tidspunkter (skriv selv)</label>
-        </div>
-        <div id="andet-tid-wrap" class="hidden">
-          <input type="text" id="andet-tid" name="andet_tidspunkt" placeholder="fx kl. 10 om formiddagen">
-        </div>
-
-        <label for="kommentar">Kommentar (valgfrit)</label>
-        <p class="hint">Skriv gerne hvis noget passer dig bedre end andet — fx "helst kl. 15, men kl. 15.30 fungerer også".</p>
-        <textarea id="kommentar" name="kommentar"></textarea>
-
-        <button type="submit">Send tilmelding</button>
-      </form>
-    </div>
-
-    <div id="confirm-view" class="confirm hidden">
-      <h2>Tak!</h2>
-      <p>Din tilmelding er modtaget. Jeg vender tilbage snarest.</p>
-    </div>
+    <p class="eyebrow">Olles lille musikskole</p>
+    <h1>Elev<em>portal</em> — under opbygning</h1>
+    <p class="sub">Denne side bliver hjemmet for elevernes egen portal (login, kommende lektioner, materiale fra Olle m.m.). Indtil da finder du tilmeldingsformularen her:</p>
+    <a class="link" href="/tilmelding">Gå til tilmelding →</a>
   </div>
-
-  <script>
-    // Vis/skjul fritekstfeltet for "Andre tidspunkter".
-    const andetCheckbox = document.getElementById("andet-checkbox");
-    const andetWrap = document.getElementById("andet-tid-wrap");
-    andetCheckbox.addEventListener("change", function () {
-      andetWrap.classList.toggle("hidden", !andetCheckbox.checked);
-      if (!andetCheckbox.checked) document.getElementById("andet-tid").value = "";
-    });
-
-    // Enkel AJAX-indsendelse, så brugeren ikke forlader siden (Netlify-standard-mønster).
-    // Bekræftelsesmailen sendes automatisk serverside af Netlify Functionen
-    // netlify/functions/on-form-submit.mts, når Netlify registrerer indsendelsen.
-    const form = document.getElementById("signup-form");
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-
-      const valgteTider = form.querySelectorAll('input[name="tidspunkter"]:checked');
-      const kommentar = document.getElementById("kommentar").value.trim();
-      if (valgteTider.length === 0 && !kommentar) {
-        alert("Vælg mindst ét tidspunkt, eller skriv en kommentar om hvornår det passer dig.");
-        return;
-      }
-
-      const data = new FormData(form);
-
-      fetch("/", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(data).toString(),
-      })
-        .then(() => {
-          document.getElementById("form-view").classList.add("hidden");
-          document.getElementById("confirm-view").classList.remove("hidden");
-
-          // Gemmer desuden tilmeldingen i Supabase, ved siden af den
-          // eksisterende Netlify Forms-indsendelse ovenfor. Fejler dette,
-          // skal det ikke ødelægge oplevelsen — brugeren har allerede fået
-          // sin bekræftelse, så vi bare logger fejlen i konsollen.
-          const tidspunkter = Array.from(valgteTider).map((el) => el.value);
-          fetch("/api/save-signup", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              navn: data.get("navn"),
-              alder: data.get("alder"),
-              email: data.get("email"),
-              telefon: data.get("telefon"),
-              instrument: data.get("instrument"),
-              tidspunkter: tidspunkter,
-              andet_tidspunkt: data.get("andet_tidspunkt"),
-              kommentar: data.get("kommentar"),
-              "bot-field": data.get("bot-field"),
-            }),
-          }).catch((err) => console.error("Kunne ikke gemme i Supabase:", err));
-        })
-        .catch(() => alert("Noget gik galt — prøv igen."));
-    });
-  </script>
 </body>
 </html>
