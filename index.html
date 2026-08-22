@@ -3,45 +3,72 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tilmelding — Olle Markensten Musikundervisning</title>
+<title>Tilmelding — Olles lille musikskole</title>
 <style>
   :root {
-    --ink: #1C2333;
-    --paper: #F7F5F0;
-    --brass: #B8863B;
-    --line: #DAD5C9;
+    --forest: #26332C;
+    --forest-deep: #1C2620;
+    --cream: #F2EEE3;
+    --cream-soft: #E8E2D1;
+    --ink: #262B22;
+    --gold: #CA9A44;
+    --rose: #D17A94;
+    --line: #DBD4C0;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: var(--paper);
+    background: radial-gradient(120% 120% at 50% 0%, var(--forest) 0%, var(--forest-deep) 100%);
     color: var(--ink);
     display: flex;
     justify-content: center;
-    padding: 24px 16px;
+    padding: 40px 16px;
+    min-height: 100vh;
   }
-  .card { width: 100%; max-width: 440px; }
+  .card {
+    width: 100%;
+    max-width: 460px;
+    background: var(--cream);
+    border-radius: 24px;
+    padding: 40px 32px;
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.45);
+    align-self: center;
+  }
+  p.eyebrow {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--rose);
+    font-weight: 700;
+    margin: 0 0 10px;
+  }
   h1 {
-    font-family: Georgia, serif;
-    font-size: 22px;
-    margin: 0 0 4px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 28px;
+    line-height: 1.2;
+    margin: 0 0 8px;
+    color: var(--ink);
   }
-  p.sub { color: #8b8578; font-size: 13px; margin: 0 0 24px; }
-  p.brand { font-family: Georgia, serif; font-style: italic; font-size: 14px; color: var(--brass); margin: 0 0 6px; }
+  h1 em {
+    font-style: italic;
+    color: var(--gold);
+  }
+  p.sub { color: #6b6558; font-size: 13.5px; margin: 0 0 28px; line-height: 1.5; }
   label {
     display: block;
-    font-size: 12px;
+    font-size: 11.5px;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
     color: #6b6558;
-    margin: 16px 0 6px;
+    font-weight: 600;
+    margin: 18px 0 6px;
   }
   input, textarea {
     width: 100%;
-    padding: 10px 12px;
+    padding: 12px 14px;
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 12px;
     font-size: 15px;
     font-family: inherit;
     background: #fff;
@@ -49,10 +76,11 @@
   }
   input:focus, textarea:focus {
     outline: none;
-    border-color: var(--brass);
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(202, 154, 68, 0.18);
   }
   textarea { resize: vertical; min-height: 70px; }
-  p.hint { font-size: 12.5px; color: #8b8578; margin: 4px 0 0; line-height: 1.4; }
+  p.hint { font-size: 12.5px; color: #8b8578; margin: 6px 0 0; line-height: 1.4; }
   .slot-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -61,54 +89,65 @@
   .slot {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
-    padding: 9px 10px;
+    padding: 10px 10px;
     border: 1px solid var(--line);
-    border-radius: 8px;
-    font-size: 14px;
+    border-radius: 999px;
+    font-size: 13.5px;
     cursor: pointer;
     background: #fff;
     margin: 0;
     text-transform: none;
     letter-spacing: normal;
+    font-weight: 500;
     color: var(--ink);
+    transition: border-color 0.15s, background 0.15s;
   }
-  .slot input { width: auto; padding: 0; }
-  .slot.andet { grid-column: span 3; }
+  .slot:has(input:checked) {
+    background: var(--forest);
+    border-color: var(--forest);
+    color: var(--cream);
+  }
+  .slot input { width: auto; padding: 0; accent-color: var(--forest); }
+  .slot.andet { grid-column: span 3; justify-content: flex-start; border-radius: 12px; }
   #andet-tid-wrap { margin-top: 8px; }
   #andet-tid-wrap.hidden { display: none; }
   button {
     width: 100%;
-    margin-top: 24px;
-    padding: 13px;
-    background: var(--ink);
-    color: var(--paper);
+    margin-top: 28px;
+    padding: 14px;
+    background: var(--forest);
+    color: var(--cream);
     border: none;
     border-radius: 999px;
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
+    transition: background 0.15s;
   }
-  button:hover { background: #2A3348; }
+  button:hover { background: var(--forest-deep); }
   .hidden { display: none; }
   .confirm {
     text-align: center;
-    padding: 40px 20px;
+    padding: 32px 8px;
   }
-  .confirm h2 { font-family: Georgia, serif; }
+  .confirm h2 { font-family: Georgia, serif; color: var(--ink); margin-bottom: 8px; }
+  .confirm p { color: #6b6558; font-size: 14.5px; line-height: 1.5; }
 </style>
 </head>
 <body>
   <div class="card">
     <div id="form-view">
-      <p class="brand">Olles lille musikskole</p>
-      <h1>Skriv dig op</h1>
-      <p class="sub">Udfyld formularen, så vender vi tilbage med en tid.</p>
+      <p class="eyebrow">Olles lille musikskole</p>
+      <h1>Skriv dig <em>op</em></h1>
+      <p class="sub">Udfyld formularen, så vender jeg tilbage med en tid.</p>
 
       <!-- Netlify opsamler alle indsendelser automatisk, med tidsstempel,
-           i den rækkefølge de kommer ind — synligt i jeres Netlify-panel
-           under Forms, uden nogen egen database. Bekræftelsesmailen sendes
-           serverside via en Netlify Function (Resend), se netlify/functions. -->
+           i den rækkefølge de kommer ind — synligt i Netlify-panelet under
+           Forms. Bekræftelsesmailen sendes serverside via en Netlify Function
+           (Resend), og tilmeldingen gemmes desuden i Supabase — se
+           netlify/functions/on-form-submit.mts og save-signup.mts. -->
       <form name="tilmelding" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="signup-form">
         <input type="hidden" name="form-name" value="tilmelding" />
         <p class="hidden"><label>Undlad at udfylde: <input name="bot-field" /></label></p>
@@ -185,6 +224,7 @@
       }
 
       const data = new FormData(form);
+
       fetch("/", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -193,6 +233,27 @@
         .then(() => {
           document.getElementById("form-view").classList.add("hidden");
           document.getElementById("confirm-view").classList.remove("hidden");
+
+          // Gemmer desuden tilmeldingen i Supabase, ved siden af den
+          // eksisterende Netlify Forms-indsendelse ovenfor. Fejler dette,
+          // skal det ikke ødelægge oplevelsen — brugeren har allerede fået
+          // sin bekræftelse, så vi bare logger fejlen i konsollen.
+          const tidspunkter = Array.from(valgteTider).map((el) => el.value);
+          fetch("/api/save-signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              navn: data.get("navn"),
+              alder: data.get("alder"),
+              email: data.get("email"),
+              telefon: data.get("telefon"),
+              instrument: data.get("instrument"),
+              tidspunkter: tidspunkter,
+              andet_tidspunkt: data.get("andet_tidspunkt"),
+              kommentar: data.get("kommentar"),
+              "bot-field": data.get("bot-field"),
+            }),
+          }).catch((err) => console.error("Kunne ikke gemme i Supabase:", err));
         })
         .catch(() => alert("Noget gik galt — prøv igen."));
     });
