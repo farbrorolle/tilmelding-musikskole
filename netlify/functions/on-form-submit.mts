@@ -23,7 +23,7 @@ export default {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "Olles musikskole <onboarding@resend.dev>",
+          from: "Olles musikskole <noreply@olleslillemusikskole.dk>",
           to: email,
           subject: "Tak for din tilmelding",
           html: `<div style="font-family: system-ui, sans-serif, Arial; font-size: 16px"><p>Hej ${navn}!</p><p>Tak for din tilmelding, jeg vender tilbage med et skema.</p><p>Mange hilsner,<br />Olle</p></div>`,
