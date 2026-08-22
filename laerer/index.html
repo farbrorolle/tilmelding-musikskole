@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lærerens værktøjer — Olles lille musikskole</title>
+<style>
+  :root {
+    --forest: #26332C;
+    --forest-deep: #1C2620;
+    --cream: #F2EEE3;
+    --cream-soft: #E8E2D1;
+    --ink: #262B22;
+    --gold: #9C7419;
+    --rose: #A54964;
+    --sage: #4C6B54;
+    --line: #DBD4C0;
+    --muted: #6b6558;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(120% 120% at 50% 0%, var(--forest) 0%, var(--forest-deep) 100%);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 32px 16px 80px;
+  }
+  .app { max-width: 1040px; margin: 0 auto; }
+  .mockup-banner {
+    background: rgba(242, 238, 227, 0.92);
+    border: 1px dashed var(--gold);
+    color: var(--ink);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 12.5px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .mockup-banner strong { color: var(--gold); }
+  header { text-align: center; margin-bottom: 24px; }
+  p.eyebrow {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--rose);
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+  h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 28px;
+    color: var(--cream);
+    margin: 0 0 20px;
+  }
+  nav.tabs {
+    display: inline-flex;
+    background: rgba(242, 238, 227, 0.12);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 4px;
+  }
+  nav.tabs button {
+    border: none;
+    background: transparent;
+    color: var(--cream);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 22px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  nav.tabs button.active { background: var(--cream); color: var(--forest-deep); }
+
+  .card {
+    background: var(--cream);
+    border-radius: 20px;
+    padding: 24px 24px;
+    box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.4);
+  }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  h2 {
+    font-family: Georgia, serif;
+    font-size: 19px;
+    margin: 0 0 4px;
+    color: var(--ink);
+  }
+  p.section-hint { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+
+  .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  @media (max-width: 760px) { .grid-2col { grid-template-columns: 1fr; } }
+
+  .waitlist-item {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    background: #fff;
+  }
+  .waitlist-item .name { font-weight: 700; font-size: 15px; }
+  .waitlist-item .meta { color: var(--muted); font-size: 12.5px; margin: 4px 0 8px; line-height: 1.5; }
+  .waitlist-item .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .pill {
+    display: inline-block;
+    font-size: 11.5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--cream-soft);
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .btn {
+    border: none;
+    border-radius: 999px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--forest);
+    color: var(--cream);
+  }
+  .btn:hover { background: var(--forest-deep); }
+  .btn.secondary { background: transparent; color: var(--forest); border: 1px solid var(--forest); }
+  .btn.secondary:hover { background: rgba(38,51,44,0.06); }
+  .btn.small { padding: 6px 12px; font-size: 12px; }
+  .btn.gold { background: var(--gold); }
+  .btn.gold:hover { background: #7d5c14; }
+
+  .week-slot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid var(--line);
+    margin-bottom: 8px;
+    font-size: 13.5px;
+  }
+  .week-slot .time { font-weight: 700; width: 92px; flex-shrink: 0; }
+  .swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .swatch.accent { background: var(--gold); }
+  .swatch.rose { background: var(--rose); }
+  .swatch.sage { background: var(--sage); }
+  .week-slot .who { flex: 1; }
+  .week-slot .instr { color: var(--muted); font-size: 12px; }
+
+  .section { margin-top: 8px; }
+
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+  .month-grid .dow {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-align: center;
+    padding-bottom: 4px;
+    font-weight: 700;
+  }
+  .day-cell {
+    aspect-ratio: 1;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid var(--line);
+    font-size: 11.5px;
+    padding: 4px;
+    position: relative;
+    color: var(--muted);
+  }
+  .day-cell.empty { background: transparent; border: none; }
+  .day-cell .num { font-weight: 700; color: var(--ink); }
+  .day-cell .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin: 1px; }
+  .dot.grey { background: #b9b2a0; }
+  .dot.gold { background: var(--gold); }
+  .dot.sage { background: var(--sage); }
+  .dot.rose { background: var(--rose); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  .invoice-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    margin-bottom: 8px;
+    font-size: 13.5px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .invoice-row .status {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .status.draft { background: var(--cream-soft); color: var(--muted); }
+  .status.sent { background: rgba(156, 116, 25, 0.15); color: var(--gold); }
+  .status.paid { background: rgba(76, 107, 84, 0.15); color: var(--sage); }
+
+  /* I dag */
+  .student-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--gold);
+    padding: 16px 18px;
+    margin-bottom: 14px;
+  }
+  .student-card.rose { border-left-color: var(--rose); }
+  .student-card.sage { border-left-color: var(--sage); }
+  .student-head { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: #fff;
+    background: var(--gold); flex-shrink: 0;
+  }
+  .avatar.rose { background: var(--rose); }
+  .avatar.sage { background: var(--sage); }
+  .student-head .info { flex: 1; }
+  .student-head .name { font-weight: 700; font-size: 15px; }
+  .student-head .focus { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .student-head .chevron { color: var(--muted); font-size: 13px; }
+  .last-note {
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: var(--muted);
+    background: var(--cream-soft);
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+  .today-note-field { margin-top: 10px; }
+  .today-note-field label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--muted); font-weight: 700; display: block; margin-bottom: 4px;
+  }
+  textarea, input.text-input {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13.5px;
+    resize: vertical;
+  }
+  .student-body { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; display: none; }
+  .student-body.open { display: block; }
+  .upload-row { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+  .media-list { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; padding-left: 18px; }
+  .media-list li { margin-bottom: 2px; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--forest-deep); color: var(--cream); padding: 12px 20px;
+    border-radius: 999px; font-size: 13.5px; opacity: 0; transition: all 0.25s;
+    pointer-events: none; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(28, 38, 32, 0.55);
+    align-items: center; justify-content: center; z-index: 40; padding: 16px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--cream); border-radius: 18px; padding: 24px; max-width: 420px; width: 100%;
+    max-height: 88vh; overflow-y: auto;
+  }
+  .modal h3 { font-family: Georgia, serif; margin: 0 0 12px; }
+  .modal label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); display: block; margin: 12px 0 4px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  .invoice-lines { font-size: 13px; margin: 10px 0; }
+  .invoice-lines .line { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); }
+  .invoice-lines .total { font-weight: 700; border-top: 1px solid var(--ink); border-bottom: none; padding-top: 8px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="mockup-banner">
+    <strong>Skitse — ikke koblet til rigtig database endnu.</strong> Dette er en klikbar mockup af lærerens Planlægning og "I dag", så du kan give feedback på indhold og flow, før jeg bygger den rigtige backend (rigtig venteliste fra Supabase, rigtig Google-kalender-oprettelse, rigtig e-conomic-faktura). Intet her rører tilmeldingssiden på <code>/tilmelding</code>.
+  </div>
+  <header>
+    <p class="eyebrow">Olles lille musikskole</p>
+    <h1>Lærerens værktøjer</h1>
+    <nav class="tabs">
+      <button class="tab active" data-tab="planlaegning">Planlægning</button>
+      <button class="tab" data-tab="idag">I dag</button>
+    </nav>
+  </header>
+
+  <section id="view-planlaegning" class="view active">
+    <div class="grid-2col">
+      <div class="card">
+        <h2>Venteliste</h2>
+        <p class="section-hint">Nye tilmeldinger fra /tilmelding. Tildel en fast tid for at flytte eleven til ugeoversigten.</p>
+        <div id="waitlist"></div>
+      </div>
+      <div class="card">
+        <h2>Ugeoversigt (mandag)</h2>
+        <p class="section-hint">Alle faste tider lige nu — udkast vises nedtonet indtil de er publiceret.</p>
+        <div id="week-grid"></div>
+      </div>
+    </div>
+
+    <div class="card section">
+      <h2>Afstemning</h2>
+      <p class="section-hint">August 2026 — grå = kommende, gul = skal faktureres, grøn = faktureret, rosa = aflyst.</p>
+      <div class="legend">
+        <span><span class="dot grey" style="display:inline-block"></span> Kommende</span>
+        <span><span class="dot gold" style="display:inline-block"></span> Skal faktureres</span>
+        <span><span class="dot sage" style="display:inline-block"></span> Faktureret</span>
+        <span><span class="dot rose" style="display:inline-block"></span> Aflyst</span>
+      </div>
+      <div class="month-grid" id="month-grid"></div>
+      <h2 style="margin-top:22px;">Fakturaer</h2>
+      <div id="invoices"></div>
+    </div>
+  </section>
+
+  <section id="view-idag" class="view">
+    <div class="card">
+      <h2>I dag — mandag</h2>
+      <p class="section-hint">Se hvad hver elev arbejder med uden at åbne kortet. Åbn kortet for at registrere fremmøde og sende en note.</p>
+      <div id="today-cards"></div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-overlay" id="assign-modal">
+  <div class="modal">
+    <h3>Tildel fast tid</h3>
+    <p id="assign-student-name" style="margin:0; color:var(--muted); font-size:13.5px;"></p>
+    <label>Ugedag</label>
+    <select id="assign-weekday" class="text-input">
+      <option>Mandag</option>
+    </select>
+    <label>Tidspunkt</label>
+    <select id="assign-time" class="text-input">
+      <option>13:00–13:30</option>
+      <option>13:30–14:00</option>
+      <option>14:00–14:30</option>
+      <option>14:30–15:00</option>
+      <option>15:00–15:30</option>
+      <option>15:30–16:00</option>
+      <option>16:00–16:30</option>
+      <option>16:30–17:00</option>
+      <option>17:00–17:30</option>
+      <option>17:30–18:00</option>
+    </select>
+    <label>Instrument (til prissætning)</label>
+    <select id="assign-instrument" class="text-input">
+      <option>Klaver</option>
+      <option>Guitar</option>
+      <option>Sang</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn secondary small" onclick="closeAssignModal()">Annullér</button>
+      <button class="btn small" onclick="confirmAssign()">Gem som udkast</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="invoice-modal">
+  <div class="modal">
+    <h3>Se &amp; godkend faktura</h3>
+    <div id="invoice-modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn secondary small" onclick="closeInvoiceModal()">Luk</button>
+      <button class="btn gold small" id="invoice-confirm-btn" onclick="confirmInvoice()">Bekræft &amp; opret i e-conomic</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const state = {
+    waitlist: [
+      { id: 1, navn: "Freja Holm", alder: 9, instrument: "klaver, lidt sang", tidspunkter: ["15:00–15:30", "15:30–16:00"], andet: "", kommentar: "Helst lige efter skole" },
+      { id: 2, navn: "Oskar Lind", alder: 12, instrument: "guitar", tidspunkter: ["Andet tidspunkt"], andet: "Lørdag formiddag, fx kl. 10, eller en anden dag", kommentar: "" },
+      { id: 3, navn: "Sofie Krag", alder: 7, instrument: "sang, lidt klaver", tidspunkter: ["13:00–13:30"], andet: "", kommentar: "Første gang med musikundervisning, er lidt nervøs" }
+    ],
+    assignments: [
+      { id: 1, navn: "Emma Sørensen", weekday: "Mandag", time: "14:00–14:30", instrument: "Klaver", status: "published", color: "accent" },
+      { id: 2, navn: "Nora Bergstrøm", weekday: "Mandag", time: "15:00–15:30", instrument: "Sang", status: "published", color: "rose" },
+      { id: 3, navn: "Malte Sørensen", weekday: "Mandag", time: "16:30–17:00", instrument: "Guitar", status: "published", color: "sage" }
+    ],
+    today: [
+      { id: 1, navn: "Emma Sørensen", color: "accent", currentFocus: "Skalaer i C-dur, første simple melodi", lastNote: "11. aug: Øvede C-dur skala. Næste gang: begynde på et kort melodi-uddrag.", prepNote: "", draftStudentNote: "", open: false, videos: [], files: [] },
+      { id: 2, navn: "Nora Bergstrøm", color: "rose", currentFocus: "Åndedræt og tonedannelse", lastNote: "11. aug: Arbejdede med støtte i vejrtrækningen.", prepNote: "", draftStudentNote: "", open: false, videos: [], files: [] },
+      { id: 3, navn: "Malte Sørensen", color: "sage", currentFocus: "Barré-akkorder", lastNote: "4. aug: Introduceret F-dur barré — øv langsomt.", prepNote: "", draftStudentNote: "", open: false, videos: [], files: [] }
+    ],
+    invoices: [
+      { id: 1, navn: "Emma Sørensen", period: "Juli 2026", amount: 1800, status: "sent", lines: [["1. jul","Klaver, 30 min",450],["8. jul","Klaver, 30 min",450],["15. jul","Klaver, 30 min",450],["22. jul","Klaver, 30 min",450]] },
+      { id: 2, navn: "Nora Bergstrøm", period: "Juli 2026", amount: 1920, status: "paid", lines: [["1. jul","Sang, 30 min",480],["8. jul","Sang, 30 min",480],["15. jul","Sang, 30 min",480],["22. jul","Sang, 30 min",480]] }
+    ],
+    monthDots: {
+      3: ["grey"], 10: ["grey"], 17: ["grey"], 24: ["grey"], 31: ["grey"],
+      6: ["gold"], 13: ["gold"], 20: ["rose"]
+    }
+  };
+
+  let pendingAssignId = null;
+
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    document.getElementById("view-planlaegning").classList.toggle("active", tab === "planlaegning");
+    document.getElementById("view-idag").classList.toggle("active", tab === "idag");
+  }
+  document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
+
+  function renderWaitlist() {
+    const el = document.getElementById("waitlist");
+    if (state.waitlist.length === 0) {
+      el.innerHTML = '<p class="section-hint">Ingen på ventelisten lige nu.</p>';
+      return;
+    }
+    el.innerHTML = state.waitlist.map(w => `
+      <div class="waitlist-item">
+        <div class="name">${w.navn} <span style="font-weight:400;color:var(--muted);font-size:12.5px;">(${w.alder} år)</span></div>
+        <div class="meta">Ønsker: ${w.instrument}${w.kommentar ? " — " + w.kommentar : ""}</div>
+        <div class="pill-row">
+          ${w.tidspunkter.map(t => `<span class="pill">${t === "Andet tidspunkt" && w.andet ? w.andet : t}</span>`).join("")}
+        </div>
+        <button class="btn small" onclick="openAssignModal(${w.id})">Tildel fast tid</button>
+      </div>
+    `).join("");
+  }
+
+  function renderWeekGrid() {
+    const el = document.getElementById("week-grid");
+    if (state.assignments.length === 0) {
+      el.innerHTML = '<p class="section-hint">Ingen faste tider endnu.</p>';
+      return;
+    }
+    const sorted = [...state.assignments].sort((a, b) => a.time.localeCompare(b.time));
+    el.innerHTML = sorted.map(a => `
+      <div class="week-slot" style="${a.status === "draft" ? "opacity:0.6;" : ""}">
+        <span class="swatch ${a.color}"></span>
+        <span class="time">${a.time}</span>
+        <span class="who">${a.navn}<div class="instr">${a.instrument}${a.status === "draft" ? " — udkast" : ""}</div></span>
+        ${a.status === "draft" ? `<button class="btn small gold" onclick="publishAssignment(${a.id})">Opret i Google Kalender</button>` : ""}
+      </div>
+    `).join("");
+  }
+
+  function renderMonthGrid() {
+    const el = document.getElementById("month-grid");
+    const dows = ["Man","Tir","Ons","Tor","Fre","Lør","Søn"];
+    let html = dows.map(d => `<div class="dow">${d}</div>`).join("");
+    // August 2026 starts on a Saturday; 31 days. Leading empty cells = 5 (Man,Tir,Ons,Tor,Fre before Lør 1.).
+    const leading = 5;
+    for (let i = 0; i < leading; i++) html += '<div class="day-cell empty"></div>';
+    for (let day = 1; day <= 31; day++) {
+      const dots = (state.monthDots[day] || []).map(c => `<span class="dot ${c}"></span>`).join("");
+      html += `<div class="day-cell"><div class="num">${day}</div>${dots}</div>`;
+    }
+    el.innerHTML = html;
+  }
+
+  function renderInvoices() {
+    const el = document.getElementById("invoices");
+    el.innerHTML = state.invoices.map(inv => `
+      <div class="invoice-row">
+        <div><strong>${inv.navn}</strong> — ${inv.period}, ${inv.amount} kr</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="status ${inv.status}">${inv.status === "draft" ? "Udkast" : inv.status === "sent" ? "Sendt" : "Betalt"}</span>
+          <button class="btn secondary small" onclick="openInvoiceModal(${inv.id})">${inv.status === "draft" ? "Se & godkend faktura" : "Se faktura"}</button>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function openAssignModal(id) {
+    pendingAssignId = id;
+    const w = state.waitlist.find(x => x.id === id);
+    document.getElementById("assign-student-name").textContent = `${w.navn}, ${w.alder} år — ønsker: ${w.instrument}`;
+    document.getElementById("assign-modal").classList.add("open");
+  }
+  function closeAssignModal() {
+    document.getElementById("assign-modal").classList.remove("open");
+    pendingAssignId = null;
+  }
+  function confirmAssign() {
+    const w = state.waitlist.find(x => x.id === pendingAssignId);
+    if (!w) return;
+    const weekday = document.getElementById("assign-weekday").value;
+    const time = document.getElementById("assign-time").value;
+    const instrument = document.getElementById("assign-instrument").value;
+    const colors = ["accent", "rose", "sage"];
+    const color = colors[state.assignments.length % colors.length];
+    state.assignments.push({ id: Date.now(), navn: w.navn, weekday, time, instrument, status: "draft", color });
+    state.waitlist = state.waitlist.filter(x => x.id !== pendingAssignId);
+    closeAssignModal();
+    renderWaitlist();
+    renderWeekGrid();
+    showToast(`${w.navn} er tildelt ${time} som udkast — klar til at oprette i Google Kalender.`);
+  }
+  function publishAssignment(id) {
+    const a = state.assignments.find(x => x.id === id);
+    if (!a) return;
+    a.status = "published";
+    renderWeekGrid();
+    showToast(`Fast tid oprettet i Google Kalender for ${a.navn} — invitation sendt.`);
+  }
+
+  function openInvoiceModal(id) {
+    const inv = state.invoices.find(x => x.id === id);
+    const linesHtml = inv.lines.map(([d, desc, amt]) => `
+      <div class="line"><span>${d} — ${desc}</span><span>${amt} kr</span></div>
+    `).join("");
+    document.getElementById("invoice-modal-body").innerHTML = `
+      <p style="font-size:13px; color:var(--muted); margin:0 0 10px;">${inv.navn} — periode ${inv.period}</p>
+      <div class="invoice-lines">
+        ${linesHtml}
+        <div class="line total"><span>I alt (moms inkl.)</span><span>${inv.amount} kr</span></div>
+      </div>
+    `;
+    const btn = document.getElementById("invoice-confirm-btn");
+    if (inv.status === "draft") {
+      btn.style.display = "inline-block";
+      btn.dataset.id = id;
+    } else {
+      btn.style.display = "none";
+    }
+    document.getElementById("invoice-modal").classList.add("open");
+  }
+  function closeInvoiceModal() {
+    document.getElementById("invoice-modal").classList.remove("open");
+  }
+  function confirmInvoice() {
+    const id = Number(document.getElementById("invoice-confirm-btn").dataset.id);
+    const inv = state.invoices.find(x => x.id === id);
+    if (inv) inv.status = "sent";
+    closeInvoiceModal();
+    renderInvoices();
+    showToast(`Faktura oprettet i e-conomic — husk at trykke "send" der for at sende den til ${inv.navn}.`);
+  }
+
+  function renderToday() {
+    const el = document.getElementById("today-cards");
+    el.innerHTML = state.today.map(s => `
+      <div class="student-card ${s.color}">
+        <div class="student-head" onclick="toggleToday(${s.id})">
+          <div class="avatar ${s.color}">${initials(s.navn)}</div>
+          <div class="info">
+            <div class="name">${s.navn}</div>
+            <div class="focus">Arbejder med: ${s.currentFocus}</div>
+          </div>
+          <div class="chevron">${s.open ? "▲" : "▼"}</div>
+        </div>
+        <div class="last-note">Sidste gang — ${s.lastNote}</div>
+        <div class="today-note-field">
+          <label>Note til i dag — hvad skal I kigge på?</label>
+          <textarea rows="2" oninput="updatePrepNote(${s.id}, this.value)">${s.prepNote}</textarea>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn secondary small" onclick="toggleToday(${s.id})">${s.open ? "Luk" : "Åbn"}</button>
+        </div>
+        <div class="student-body ${s.open ? "open" : ""}">
+          <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700;">Note til eleven — hvad har I arbejdet med i dag?</label>
+          <textarea rows="2" style="margin-top:4px;" oninput="updateStudentNote(${s.id}, this.value)">${s.draftStudentNote}</textarea>
+          <div class="upload-row">
+            <button class="btn secondary small" onclick="addMedia(${s.id}, 'video')">+ Tilføj video</button>
+            <button class="btn secondary small" onclick="addMedia(${s.id}, 'file')">+ Tilføj fil (fx akkorder, PDF)</button>
+          </div>
+          ${s.videos.length ? `<div><strong style="font-size:12px;">Videoer</strong><ul class="media-list">${s.videos.map(v => `<li>${v}</li>`).join("")}</ul></div>` : ""}
+          ${s.files.length ? `<div><strong style="font-size:12px;">Filer</strong><ul class="media-list">${s.files.map(f => `<li>${f}</li>`).join("")}</ul></div>` : ""}
+          <div style="margin-top:12px;">
+            <button class="btn small" onclick="registerAttendance(${s.id})">Registrér fremmøde &amp; send note</button>
+          </div>
+        </div>
+      </div>
+    `).join("");
+  }
+  function initials(navn) {
+    return navn.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+  }
+  function toggleToday(id) {
+    const s = state.today.find(x => x.id === id);
+    s.open = !s.open;
+    renderToday();
+  }
+  function updatePrepNote(id, val) {
+    const s = state.today.find(x => x.id === id);
+    s.prepNote = val;
+  }
+  function updateStudentNote(id, val) {
+    const s = state.today.find(x => x.id === id);
+    s.draftStudentNote = val;
+  }
+  function addMedia(id, type) {
+    const s = state.today.find(x => x.id === id);
+    const n = (type === "video" ? s.videos.length : s.files.length) + 1;
+    const label = type === "video" ? `Video ${n} — optaget i dag` : `Fil ${n} — akkorder.pdf`;
+    if (type === "video") s.videos.push(label); else s.files.push(label);
+    renderToday();
+    showToast(type === "video" ? "Video tilføjet (simuleret upload)." : "Fil tilføjet (simuleret upload).");
+  }
+  function registerAttendance(id) {
+    const s = state.today.find(x => x.id === id);
+    if (!s.draftStudentNote.trim()) {
+      showToast("Skriv en note til eleven først.");
+      return;
+    }
+    s.lastNote = `I dag: ${s.draftStudentNote}`;
+    s.draftStudentNote = "";
+    s.open = false;
+    renderToday();
+    showToast(`Fremmøde registreret for ${s.navn} — note sendt til eleven.`);
+  }
+
+  renderWaitlist();
+  renderWeekGrid();
+  renderMonthGrid();
+  renderInvoices();
+  renderToday();
+</script>
+</body>
+</html>
