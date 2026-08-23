@@ -161,21 +161,21 @@
         <input type="tel" id="tlf" name="telefon" required>
 
         <label for="instrument">Instrument / ønske</label>
-        <input type="text" id="instrument" name="instrument" placeholder="fx klaver, musikproduktion, lidt af begge" required>
+        <input type="text" id="instrument" name="instrument" placeholder="fx klaver, guitar, lidt af begge" required>
 
-        <label>Ønskede tidspunkter om torsdagen</label>
-        <p class="hint">Vælg gerne flere tidspunkter (25 min. pr. lektion), hvis der er flere der passer dig.</p>
+        <label>Ønskede tidspunkter om mandagen</label>
+        <p class="hint">Vælg gerne flere tidspunkter (30 min. pr. lektion), hvis der er flere der passer dig.</p>
         <div class="slot-grid">
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="13:00–13:25"> 13:00</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="13:30–13:55"> 13:30</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="14:00–14:25"> 14:00</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="14:30–14:55"> 14:30</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="15:00–15:25"> 15:00</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="15:30–15:55"> 15:30</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="16:00–16:25"> 16:00</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="16:30–16:55"> 16:30</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="17:00–17:25"> 17:00</label>
-          <label class="slot"><input type="checkbox" name="tidspunkter" value="17:30–17:55"> 17:30</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="13:00–13:30"> 13:00</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="13:30–14:00"> 13:30</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="14:00–14:30"> 14:00</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="14:30–15:00"> 14:30</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="15:00–15:30"> 15:00</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="15:30–16:00"> 15:30</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="16:00–16:30"> 16:00</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="16:30–17:00"> 16:30</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="17:00–17:30"> 17:00</label>
+          <label class="slot"><input type="checkbox" name="tidspunkter" value="17:30–18:00"> 17:30</label>
           <label class="slot andet"><input type="checkbox" id="andet-checkbox" name="tidspunkter" value="Andet tidspunkt"> Andre tidspunkter (skriv selv)</label>
         </div>
         <div id="andet-tid-wrap" class="hidden">
@@ -221,7 +221,15 @@
 
       const data = new FormData(form);
 
-      fetch("/", {
+      // OBS (2026-08-23): skal IKKE poste til "/" — roden har en forceret
+      // redirect til /tilmelding (302!, se _redirects), og en POST der bliver
+      // omdirigeret bliver af browseren lavet om til en GET, som aldrig når
+      // frem til Netlifys formular-registrering. Resultatet var stille tabte
+      // indsendelser: rækken blev stadig gemt i Supabase (separat kald
+      // nedenfor), men Netlify Forms så aldrig indsendelsen, så
+      // on-form-submit.mts (bekræftelsesmailen) blev aldrig udløst. Poster nu
+      // til selve sidens egen adresse i stedet, som ikke rammer redirecten.
+      fetch("/tilmelding/", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams(data).toString(),
