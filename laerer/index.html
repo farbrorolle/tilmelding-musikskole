@@ -113,6 +113,21 @@
   .assign-form .field { margin-top: 0; }
   .assign-form label.check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-soft); padding-bottom: 11px; }
 
+  /* ───────────────────────── Undervisningsdage (overblik / aflys / opret) ───────────────────────── */
+  .day-row { border: 1px solid var(--border-soft); border-radius: 14px; padding: 14px 16px; }
+  .day-row + .day-row { margin-top: 10px; }
+  .day-row.cancelled { opacity: 0.55; }
+  .day-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .day-date { font-size: 14.5px; font-weight: 600; }
+  .day-sub { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+  .day-students { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .day-student-chip { font-size: 11.5px; padding: 3px 9px; border-radius: 999px; background: var(--border-soft); color: var(--ink-soft); }
+  .cancel-form, .create-day-form { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+  .cf-recipients { font-size: 12.5px; color: var(--ink-soft); }
+  .day-checklist { display: flex; flex-direction: column; gap: 7px; margin: 8px 0 4px; }
+  .day-checklist label { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+  .day-checklist input { width: auto; }
+
   /* ───────────────────────── Generic rows / lessons ───────────────────────── */
   .row-list .divider-row:first-child { border-top: none; }
   .divider-row { border-top: 1px solid var(--border-soft); padding: 12px 0; display: flex; align-items: center; gap: 12px; }
@@ -255,6 +270,14 @@
       <div class="page-head"><h1>Planlægning</h1><p>Tildel faste tider i ro og mag — intet oprettes i Google Kalender, før du udgiver.</p></div>
 
       <div class="panel">
+        <div class="section-label"><span>Undervisningsdage</span><span class="count-chip" id="teachdays-count">0</span></div>
+        <p class="section-sub">Hurtigt overblik over hvilke dage du underviser fremover. Aflys en hel dag med ét klik — alle berørte elever får en mail, som du kan redigere for denne ene gang, før den sendes. Eller opret en ekstra undervisningsdag ud over det faste skema — så sendes individuelle kalenderinvitationer til de valgte elever.</p>
+        <div id="teachdays-list"></div>
+        <button class="btn-text" id="add-teachday-toggle" style="margin-top:14px;">+ Opret ekstra undervisningsdag</button>
+        <div id="add-teachday-form" hidden></div>
+      </div>
+
+      <div class="panel">
         <div class="section-label"><span>Venteliste</span><span class="count-chip" id="waitlist-count">0</span></div>
         <p class="section-sub">I den rækkefølge eleverne har skrevet sig op.</p>
         <div id="waitlist-list"></div>
@@ -366,17 +389,155 @@
       { id: "a3", name: "Ida K.", email: "ida.k@mail.com", instrument: "Piano", weekday: 4, start: "16:30", end: "17:15", toInvoice: 0, invoiced: 0 },
     ],
     selectedDraftIds: new Set(),
+    // Undervisningsdage: hele dage der er aflyst (ISO-datoer), og ekstra
+    // undervisningsdage ud over det faste ugeskema (fx en lørdags-workshop).
+    cancelledDates: new Set(),
+    extraDays: [],
   };
 
   function slotLabel(weekday, start, end) { return WEEKDAYS_SHORT[weekday] + " " + start.slice(0, 5) + "–" + end.slice(0, 5); }
 
   // ═══════════════════════ PLANLÆGNING ═══════════════════════
   function renderPlanning() {
+    renderTeachDays();
     renderWaitlist();
     renderDrafts();
     renderWeekGrid();
     renderActive();
     renderStats();
+  }
+
+  // ───────────────────────── Undervisningsdage ─────────────────────────
+  // Kommende dage bygget ud fra de faste tider (activeAssignments) plus
+  // eventuelle ekstra undervisningsdage — grupperet pr. dato, så en aflysning
+  // eller en ny ekstra-dag rammer alle elever der har lektion netop den dag.
+  function buildUpcomingTeachDays(count) {
+    const map = {};
+    const todayIso = new Date().toISOString().slice(0, 10);
+    state.activeAssignments.forEach((a) => {
+      datesForWeekday(a.weekday, 0, 8).forEach((iso) => {
+        if (iso < todayIso) return;
+        if (!map[iso]) map[iso] = { students: [] };
+        map[iso].students.push({ name: a.name, time: a.start.slice(0, 5) });
+      });
+    });
+    state.extraDays.forEach((d) => {
+      if (!map[d.date]) map[d.date] = { students: [] };
+      map[d.date].extra = true;
+      d.students.forEach((s) => map[d.date].students.push({ name: s.name, time: s.time }));
+    });
+    return Object.keys(map)
+      .sort()
+      .slice(0, count)
+      .map((iso) => ({ date: iso, ...map[iso] }));
+  }
+
+  function defaultCancelMessage(iso) {
+    return "Hej!\n\nJeg må desværre aflyse undervisningen " + formatDate(iso) + ". Vi finder en ny tid, næste gang vi ses.\n\nMange hilsner,\nOlle";
+  }
+
+  function renderTeachDays() {
+    const list = document.getElementById("teachdays-list");
+    const days = buildUpcomingTeachDays(8);
+    document.getElementById("teachdays-count").textContent = days.filter((d) => !state.cancelledDates.has(d.date)).length;
+    if (days.length === 0) { list.innerHTML = '<p class="empty-state">Ingen planlagte undervisningsdage endnu.</p>'; return; }
+
+    list.innerHTML = "";
+    days.forEach((day) => {
+      const isCancelled = state.cancelledDates.has(day.date);
+      const row = document.createElement("div");
+      row.className = "day-row" + (isCancelled ? " cancelled" : "");
+      row.innerHTML =
+        '<div class="day-top">' +
+        '<div><p class="day-date">' + formatDate(day.date) + (day.extra ? '<span class="tag tag-instr" style="margin-left:8px;">Ekstra dag</span>' : "") + "</p>" +
+        '<p class="day-sub">' + day.students.length + " lektion" + (day.students.length === 1 ? "" : "er") + "</p></div>" +
+        (isCancelled
+          ? '<span class="tag tag-cancelled">Aflyst</span>'
+          : '<button class="btn-text danger cancel-day-toggle">Aflys denne dag</button>') +
+        "</div>" +
+        '<div class="day-students">' + day.students.map((s) => '<span class="day-student-chip">' + s.name + " · " + s.time + "</span>").join("") + "</div>" +
+        '<div class="cancel-form" hidden></div>';
+
+      const toggleBtn = row.querySelector(".cancel-day-toggle");
+      if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+          const form = row.querySelector(".cancel-form");
+          const isOpen = !form.hidden;
+          form.hidden = isOpen ? true : false;
+          if (!isOpen) {
+            form.innerHTML = buildCancelDayFormHtml(day);
+            wireCancelDayForm(form, day);
+          }
+        });
+      }
+      list.appendChild(row);
+    });
+  }
+
+  function buildCancelDayFormHtml(day) {
+    const names = day.students.map((s) => s.name).join(", ");
+    return (
+      '<p class="cf-recipients"><b>Sendes til:</b> ' + names + "</p>" +
+      '<label class="field" style="margin-top:8px;"><span>Besked til eleverne (kan redigeres for denne ene gang)</span><textarea class="cancel-message" rows="5">' + defaultCancelMessage(day.date) + "</textarea></label>" +
+      '<div style="display:flex;gap:10px;margin-top:12px;">' +
+      '<button class="btn btn-primary btn-small confirm-cancel-day">Send aflysning (' + day.students.length + ")</button>" +
+      '<button class="btn-ghost btn-small close-cancel-day">Annullér</button>' +
+      "</div>"
+    );
+  }
+  function wireCancelDayForm(form, day) {
+    form.querySelector(".confirm-cancel-day").addEventListener("click", () => {
+      state.cancelledDates.add(day.date);
+      renderTeachDays();
+      toast("Aflysning sendt til " + day.students.length + " elev" + (day.students.length === 1 ? "" : "er") + " (" + formatDate(day.date) + ").");
+    });
+    form.querySelector(".close-cancel-day").addEventListener("click", () => { form.hidden = true; });
+  }
+
+  function uniqueStudentNames() {
+    return [...new Set(state.activeAssignments.map((a) => a.name))];
+  }
+
+  document.getElementById("add-teachday-toggle").addEventListener("click", () => {
+    const form = document.getElementById("add-teachday-form");
+    const isOpen = !form.hidden;
+    form.hidden = isOpen ? true : false;
+    if (!isOpen) {
+      form.className = "create-day-form";
+      form.innerHTML = buildCreateDayFormHtml();
+      wireCreateDayForm(form);
+    }
+  });
+  function buildCreateDayFormHtml() {
+    const names = uniqueStudentNames();
+    return (
+      '<label class="field" style="margin-top:0;"><span>Dato</span><input type="date" class="create-day-date"></label>' +
+      '<label class="field"><span>Hvilke elever skal have en kalenderinvitation?</span></label>' +
+      '<div class="day-checklist">' +
+      names.map((name) => '<label><input type="checkbox" class="create-day-student" value="' + name + '"> ' + name + "</label>").join("") +
+      "</div>" +
+      '<div style="display:flex;gap:10px;margin-top:12px;">' +
+      '<button class="btn btn-primary btn-small confirm-create-day">Opret dag &amp; send kalenderinvitationer</button>' +
+      '<button class="btn-ghost btn-small close-create-day">Annullér</button>' +
+      "</div>"
+    );
+  }
+  function wireCreateDayForm(form) {
+    form.querySelector(".confirm-create-day").addEventListener("click", () => {
+      const dateVal = form.querySelector(".create-day-date").value;
+      const checked = Array.from(form.querySelectorAll(".create-day-student:checked")).map((el) => el.value);
+      if (!dateVal) { toast("Vælg en dato først."); return; }
+      if (checked.length === 0) { toast("Vælg mindst én elev."); return; }
+      const students = checked.map((name) => {
+        const a = state.activeAssignments.find((x) => x.name === name);
+        return { name, time: a ? a.start.slice(0, 5) : "15:00" };
+      });
+      state.extraDays.push({ date: dateVal, students });
+      document.getElementById("add-teachday-form").hidden = true;
+      renderTeachDays();
+      toast("Ekstra undervisningsdag oprettet " + formatDate(dateVal) + " — individuel kalenderinvitation sendt til " + checked.length + " elev" + (checked.length === 1 ? "" : "er") + " (" + checked.join(", ") + ").");
+    });
+    form.querySelector(".close-create-day").addEventListener("click", () => { document.getElementById("add-teachday-form").hidden = true; });
   }
 
   function renderWeekGrid() {
