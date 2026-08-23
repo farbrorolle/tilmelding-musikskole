@@ -791,10 +791,31 @@
     const btn = document.getElementById("publish-btn");
     btn.disabled = true;
 
+    // VIGTIGT (2026-08-23): elever findes/oprettes ud fra mail, og `students.email`
+    // er unik i databasen — så hvis den indtastede mail allerede tilhører en anden
+    // elev (fx samme mail brugt til to søskende, eller en tastefejl), blev den nye
+    // faste tid tidligere lagt STILLE ind under den EKSISTERENDE elevs navn, uden at
+    // nogen ny elev nogensinde blev oprettet. Det så ud som om personen "forsvandt",
+    // fordi succes-beskeden nævnte det nye navn, men raden i databasen tilhørte det
+    // gamle navn. Nu spørges der eksplicit før noget lægges under en anden elev end
+    // den man er ved at oprette.
+    const succeededIds = new Set();
+    const messages = [];
+
     for (const a of toPublish) {
       let studentId = null;
-      const { data: existing } = await sb.from("students").select("id").eq("email", a.email).maybeSingle();
+      let mergedInto = null;
+      const { data: existing } = await sb.from("students").select("id,name").eq("email", a.email).maybeSingle();
       if (existing) {
+        if (existing.name !== a.name) {
+          const proceed = confirm(
+            "Mailadressen " + a.email + " er allerede registreret som eleven “" + existing.name + "” i systemet.\n\n" +
+            "Tryk OK for at tilføje denne faste tid til " + existing.name + " (der oprettes IKKE en ny, separat elev ved navn “" + a.name + "”).\n" +
+            "Tryk Annullér for at springe " + a.name + " over — brug i stedet en anden mailadresse, hvis det er en ny elev."
+          );
+          if (!proceed) { messages.push(a.name + ": sprunget over (mailen tilhører allerede " + existing.name + ")"); continue; }
+          mergedInto = existing.name;
+        }
         studentId = existing.id;
       } else {
         const { data: newStu, error } = await sb.from("students").insert({ name: a.name, email: a.email, phone: a.phone, instrument_onske: a.instrument }).select().single();
@@ -807,17 +828,18 @@
       });
       if (asgErr) { toast("Kunne ikke oprette fast tid for " + a.name + ": " + asgErr.message); continue; }
       if (a.waitlistId) await sb.from("waitlist_signups").update({ status: "assigned" }).eq("id", a.waitlistId);
+      succeededIds.add(a.id);
+      messages.push(mergedInto ? "Fast tid for " + a.name + " tilføjet til " + mergedInto + "s skema" : a.name + ": fast tid oprettet");
     }
 
-    state.draftAssignments = state.draftAssignments.filter((a) => !state.selectedDraftIds.has(a.id));
-    state.selectedDraftIds.clear();
+    // Kun de rader der rent faktisk lykkedes fjernes fra udkastet — springes en
+    // elev over pga. mail-kollision, bliver den liggende i udkastet så Olle kan
+    // rette mailen og prøve igen, i stedet for at forsvinde sporløst.
+    state.draftAssignments = state.draftAssignments.filter((a) => !succeededIds.has(a.id));
+    succeededIds.forEach((id) => state.selectedDraftIds.delete(id));
     await Promise.all([refreshAssignmentsAndStudents(), refreshWaitlist()]);
     renderPlanning();
-    toast(
-      toPublish.length === 1
-        ? "Fast tid oprettet for " + toPublish[0].name + " (" + slotLabel(toPublish[0].weekday, toPublish[0].start, toPublish[0].end) + ", hver uge). Google Kalender-invitation følger i næste fase."
-        : toPublish.length + " faste tider oprettet i databasen. Google Kalender-invitationer følger i næste fase."
-    );
+    toast(messages.length ? messages.join(" · ") + ". Google Kalender-invitation følger i næste fase." : "Ingen ændringer.");
   });
 
   function renderWeekGrid() {
