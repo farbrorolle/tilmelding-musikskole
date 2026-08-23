@@ -301,6 +301,16 @@
       setTimeout(() => el.remove(), 250);
     }, 3600);
   }
+  // VIGTIGT (2026-08-23): brug ALDRIG Date#toISOString() til at lave en
+  // "YYYY-MM-DD"-dato ud fra en lokal Date — for en tidszone foran UTC (som
+  // Danmark) ruller det lokale midnat tilbage til dagen FØR i UTC, så alle
+  // datoer blev vist én dag for tidligt. Se samme rettelse i laerer/index.html.
+  function toIsoLocal(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
   function formatDate(iso) { const d = new Date(iso + "T00:00:00"); return d.toLocaleDateString("da-DK", { weekday: "short", day: "numeric", month: "short" }); }
   function nextOccurrenceDates(weekdayIdx, count) {
     const targetDow = weekdayIdx + 1;
@@ -311,7 +321,7 @@
     d.setDate(d.getDate() + delta);
     const dates = [];
     for (let i = 0; i < count; i++) {
-      dates.push(d.toISOString().slice(0, 10));
+      dates.push(toIsoLocal(d));
       d.setDate(d.getDate() + 7);
     }
     return dates;
