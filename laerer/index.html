@@ -257,20 +257,40 @@
   }
 </style>
 
-<div class="skiss-badge">Klikbar skitse — samme Planlægning og I dag du allerede har set i elevportal-skitsen, nu på sin egen adresse. Ingen rigtige kalenderinvitationer, mails eller uploads her, og intet rører tilmeldingssiden på /tilmelding.</div>
+<div class="skiss-badge">Rigtig database og rigtig login — kølisten, tildelte tider og fremmøde du registrerer her er ægte. Kalenderinvitationer og fakturering via e-conomic kobles på i et senere trin.</div>
 
 <header class="site">
   <div class="wrap brand-row">
     <div class="wordmark"><span class="mark">♪</span><span class="name">Olles lille musikskole — lærer</span></div>
-    <div class="tabs" role="tablist" aria-label="Vis side">
+    <div class="tabs" role="tablist" aria-label="Vis side" id="laerer-tabs" hidden>
       <button class="tab-btn active" data-tab="today" role="tab" aria-selected="true" id="tab-btn-today">I dag</button>
       <button class="tab-btn" data-tab="teachdays" role="tab" aria-selected="false" id="tab-btn-teachdays">Undervisningsdage</button>
       <button class="tab-btn" data-tab="planning" role="tab" aria-selected="false" id="tab-btn-planning">Planlægning</button>
     </div>
+    <button class="btn-text" id="laerer-logout" hidden>Log ud</button>
   </div>
 </header>
 
-<main>
+<div class="wrap" id="login-gate" style="padding:60px 0;">
+  <div class="panel" style="max-width:420px;margin:0 auto;">
+    <div class="section-label"><span>Log ind</span></div>
+    <form id="laerer-login-form">
+      <label class="field" style="margin-top:0;"><span>Mailadresse</span><input required type="email" id="ll-email" placeholder="dig@mail.dk"></label>
+      <label class="field"><span>Adgangskode</span><input required type="password" id="ll-password" placeholder="••••••••"></label>
+      <div id="laerer-login-error"></div>
+      <button type="submit" class="btn btn-primary" style="margin-top:20px;width:100%;">Log ind</button>
+    </form>
+    <p style="margin-top:16px;font-size:13px;color:var(--ink-soft);">Første gang på denne konto? <button type="button" class="btn-text" id="laerer-goto-signup">Opret lærerkonto</button></p>
+    <form id="laerer-signup-form" hidden style="margin-top:16px;padding-top:16px;border-top:1px dashed var(--border);">
+      <label class="field" style="margin-top:0;"><span>Mailadresse</span><input required type="email" id="ls-email" placeholder="din@mail.dk"></label>
+      <label class="field"><span>Adgangskode</span><input required type="password" id="ls-password" placeholder="Vælg en adgangskode (mindst 6 tegn)"></label>
+      <div id="laerer-signup-error"></div>
+      <button type="submit" class="btn btn-primary" style="margin-top:20px;width:100%;">Opret lærerkonto</button>
+    </form>
+  </div>
+</div>
+
+<main id="main-el" hidden>
   <!-- ═══════════════════════ I DAG ═══════════════════════ -->
   <section class="view active" id="view-today">
     <div class="wrap">
@@ -343,14 +363,18 @@
   </section>
 </main>
 
-<footer class="site">Skitse til lærerens værktøjer · Planlægning og I dag, samme datamodel som backend-koden på /tilmelding.<br><span style="display:inline-block;margin-top:6px;">Kommentarer og ønsker til flow eller indhold modtages meget gerne, før den kobles til rigtig database og Google Kalender.</span></footer>
+<footer class="site">Lærerens værktøjer · Olles lille musikskole — rigtig database, rigtig login.<br><span style="display:inline-block;margin-top:6px;">Google Kalender-invitationer og e-conomic-fakturering kobles på i et senere trin.</span></footer>
 <div id="toast-stack"></div>
 
-<script>
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const SUPABASE_URL = "https://oztzxrxfwvvccrqzhiry.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96dHp4cnhmd3Z2Y2NycXpoaXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNDc0NzYsImV4cCI6MjEwMjkyMzQ3Nn0.ar7EL8jIwYAhFzKIYyXwnANbRfy8iUOlP5Vo2C0rlmM";
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
   const WEEKDAYS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag"];
   const WEEKDAYS_SHORT = ["Man", "Tir", "Ons", "Tor", "Fre"];
-  let uid = 200;
-  const nextId = () => "id" + (uid++);
 
   function toast(msg) {
     const stack = document.getElementById("toast-stack");
@@ -366,6 +390,28 @@
   }
   function addDays(n) { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
   function formatDate(iso) { const d = new Date(iso + "T00:00:00"); return d.toLocaleDateString("da-DK", { weekday: "short", day: "numeric", month: "short" }); }
+  function todayWeekdayIdx() { const g = new Date().getDay(); return g === 0 || g === 6 ? -1 : g - 1; } // 0=Man..4=Fre, -1 = weekend
+  function datesForWeekday(weekdayIdx, weeksBack, weeksForward) {
+    const targetDow = weekdayIdx + 1;
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    const base = new Date(d);
+    base.setDate(base.getDate() + (targetDow - d.getDay()));
+    const dates = [];
+    for (let w = -weeksBack; w <= weeksForward; w++) {
+      const dt = new Date(base);
+      dt.setDate(dt.getDate() + w * 7);
+      dates.push(dt.toISOString().slice(0, 10));
+    }
+    return dates;
+  }
+  function friendlyAuthError(msg) {
+    if (!msg) return "Der skete en fejl. Prøv igen.";
+    if (/invalid login credentials/i.test(msg)) return "Forkert mailadresse eller adgangskode.";
+    if (/user already registered/i.test(msg)) return "Der findes allerede en bruger med den mailadresse — log ind i stedet.";
+    if (/password should be at least/i.test(msg)) return "Adgangskoden skal være mindst 6 tegn.";
+    return msg;
+  }
 
   // ───────────────────────── Faner ─────────────────────────
   document.querySelectorAll(".tab-btn").forEach((btn) => btn.addEventListener("click", () => switchView(btn.dataset.tab)));
@@ -381,35 +427,141 @@
     if (name === "teachdays") renderTeachDays();
   }
 
-  // ═══════════════════════ STATE ═══════════════════════
-  const state = {
-    slots: [
-      { id: "s1", weekday: 0, start: "15:00", end: "16:00" },
-      { id: "s2", weekday: 2, start: "16:00", end: "17:00" },
-      { id: "s3", weekday: 2, start: "17:00", end: "18:00" },
-      { id: "s4", weekday: 3, start: "15:30", end: "16:30" },
-      { id: "s5", weekday: 4, start: "14:00", end: "15:00" },
-    ],
-    waitlist: [
-      { id: "w1", name: "Nora Bergstrøm", email: "nora.b@mail.dk", phone: "+45 22 14 90 03", instrument: "Piano", message: "Har spillet i to år, vil gerne fortsætte hos en rigtig lærer.", preferredSlotIds: ["s1", "s4"], agoLabel: "for 4 dage siden" },
-      { id: "w2", name: "Malte Sørensen", email: "malte.sorensen@gmail.com", phone: "+45 20 23 31 98", instrument: "Guitar", message: "", preferredSlotIds: ["s2", "s3"], agoLabel: "for 2 dage siden" },
-      { id: "w3", name: "Agnes Møller", email: "agnes.moller@outlook.com", phone: "+45 51 88 04 27", instrument: "Sang", message: "Nybegynder, lidt nervøs men opsat!", preferredSlotIds: ["s5"], agoLabel: "i går" },
-      { id: "w4", name: "Viktor Holm", email: "viktor.holm99@gmail.com", phone: "+45 27 41 05 56", instrument: "Piano", message: "", preferredSlotIds: ["s1", "s2"], agoLabel: "for 5 timer siden" },
-    ],
-    draftAssignments: [],
-    activeAssignments: [
-      { id: "a1", name: "Emma S.", email: "emma.s@mail.com", instrument: "Piano", weekday: 2, start: "14:00", end: "14:45", toInvoice: 3, invoiced: 12 },
-      { id: "a2", name: "Lucas B.", email: "lucas.b@mail.com", instrument: "Guitar", weekday: 2, start: "15:00", end: "15:45", toInvoice: 1, invoiced: 5 },
-      { id: "a3", name: "Ida K.", email: "ida.k@mail.com", instrument: "Piano", weekday: 4, start: "16:30", end: "17:15", toInvoice: 0, invoiced: 0 },
-    ],
-    selectedDraftIds: new Set(),
-    // Undervisningsdage: hele dage der er aflyst (ISO-datoer), og ekstra
-    // undervisningsdage ud over det faste ugeskema (fx en lørdags-workshop).
-    cancelledDates: new Set(),
-    extraDays: [],
-  };
+  // ═══════════════════════ AUTH / LOGIN GATE ═══════════════════════
+  let session = null;
+  let isLaerer = false;
 
-  function slotLabel(weekday, start, end) { return WEEKDAYS_SHORT[weekday] + " " + start.slice(0, 5) + "–" + end.slice(0, 5); }
+  document.getElementById("laerer-goto-signup").addEventListener("click", () => {
+    document.getElementById("laerer-signup-form").hidden = false;
+  });
+  document.getElementById("laerer-login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("ll-email").value.trim();
+    const password = document.getElementById("ll-password").value;
+    const errEl = document.getElementById("laerer-login-error");
+    errEl.innerHTML = "";
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { errEl.innerHTML = '<p class="error-msg">' + friendlyAuthError(error.message) + "</p>"; return; }
+    await afterLogin(data.session);
+  });
+  document.getElementById("laerer-signup-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("ls-email").value.trim();
+    const password = document.getElementById("ls-password").value;
+    const errEl = document.getElementById("laerer-signup-error");
+    errEl.innerHTML = "";
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error) { errEl.innerHTML = '<p class="error-msg">' + friendlyAuthError(error.message) + "</p>"; return; }
+    if (data.session) { await afterLogin(data.session); }
+    else { errEl.innerHTML = '<p class="info-msg" style="color:var(--sage);">Konto oprettet — tjek din mail for at bekræfte, log derefter ind ovenfor.</p>'; }
+  });
+  document.getElementById("laerer-logout").addEventListener("click", async () => {
+    await sb.auth.signOut();
+    session = null; isLaerer = false;
+    showLoginGate();
+  });
+
+  async function afterLogin(sess) {
+    session = sess;
+    const { data: prof } = await sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+    if (!prof || prof.role !== "laerer") {
+      await sb.auth.signOut();
+      const errEl = document.getElementById("laerer-login-error");
+      errEl.innerHTML = '<p class="error-msg">Denne bruger har ikke adgang til lærerens værktøjer.</p>';
+      return;
+    }
+    isLaerer = true;
+    showApp();
+    await loadAllData();
+    switchView("today");
+  }
+  function showLoginGate() {
+    document.getElementById("login-gate").hidden = false;
+    document.getElementById("laerer-tabs").hidden = true;
+    document.getElementById("laerer-logout").hidden = true;
+    document.getElementById("main-el").hidden = true;
+  }
+  function showApp() {
+    document.getElementById("login-gate").hidden = true;
+    document.getElementById("laerer-tabs").hidden = false;
+    document.getElementById("laerer-logout").hidden = false;
+    document.getElementById("main-el").hidden = false;
+  }
+
+  // ═══════════════════════ DATA (indlæst fra Supabase) ═══════════════════════
+  let waitlist = [];        // rå rækker fra waitlist_signups (status='pending')
+  let students = [];        // alle students
+  let assignments = [];     // recurring_assignments + joinet studentnavn/mail, status='published'
+  let attendanceLog = [];   // alle attendance_log-rækker
+  let lessonNotes = [];     // alle lesson_notes-rækker
+  let lessonMedia = [];     // alle lesson_media-rækker
+  let cancelledDates = [];  // cancelled_lesson_dates
+  let extraDays = [];       // extra_teaching_days
+  let lessonPrices = {};
+
+  const state = {
+    draftAssignments: [],
+    selectedDraftIds: new Set(),
+  };
+  let uid = 200;
+  const nextId = () => "id" + (uid++);
+
+  function studentById(id) { return students.find((s) => s.id === id); }
+
+  async function loadAllData() {
+    const [{ data: wl }, { data: stu }, { data: asg }, { data: att }, { data: notes }, { data: media }, { data: cancelled }, { data: extra }, { data: prices }] = await Promise.all([
+      sb.from("waitlist_signups").select("*").eq("status", "pending").order("created_at", { ascending: true }),
+      sb.from("students").select("*"),
+      sb.from("recurring_assignments").select("*").eq("status", "published"),
+      sb.from("attendance_log").select("*"),
+      sb.from("lesson_notes").select("*"),
+      sb.from("lesson_media").select("*"),
+      sb.from("cancelled_lesson_dates").select("*"),
+      sb.from("extra_teaching_days").select("*"),
+      sb.from("lesson_prices").select("*"),
+    ]);
+    waitlist = wl || [];
+    students = stu || [];
+    assignments = (asg || []).map((a) => ({ ...a, student: studentById(a.student_id) })).filter((a) => a.student);
+    attendanceLog = att || [];
+    lessonNotes = notes || [];
+    lessonMedia = media || [];
+    cancelledDates = cancelled || [];
+    extraDays = extra || [];
+    lessonPrices = Object.fromEntries((prices || []).map((p) => [p.instrument, p.price]));
+  }
+  async function refreshAssignmentsAndStudents() {
+    const [{ data: stu }, { data: asg }] = await Promise.all([
+      sb.from("students").select("*"),
+      sb.from("recurring_assignments").select("*").eq("status", "published"),
+    ]);
+    students = stu || [];
+    assignments = (asg || []).map((a) => ({ ...a, student: studentById(a.student_id) })).filter((a) => a.student);
+  }
+  async function refreshWaitlist() {
+    const { data: wl } = await sb.from("waitlist_signups").select("*").eq("status", "pending").order("created_at", { ascending: true });
+    waitlist = wl || [];
+  }
+  async function refreshAttendance() {
+    const { data: att } = await sb.from("attendance_log").select("*");
+    attendanceLog = att || [];
+  }
+  async function refreshNotes() {
+    const { data: notes } = await sb.from("lesson_notes").select("*");
+    lessonNotes = notes || [];
+  }
+  async function refreshMedia() {
+    const { data: media } = await sb.from("lesson_media").select("*");
+    lessonMedia = media || [];
+  }
+  async function refreshTeachDays() {
+    const [{ data: cancelled }, { data: extra }] = await Promise.all([
+      sb.from("cancelled_lesson_dates").select("*"),
+      sb.from("extra_teaching_days").select("*"),
+    ]);
+    cancelledDates = cancelled || [];
+    extraDays = extra || [];
+  }
 
   // ═══════════════════════ PLANLÆGNING ═══════════════════════
   function renderPlanning() {
@@ -420,206 +572,23 @@
     renderStats();
   }
 
-  // ───────────────────────── Undervisningsdage ─────────────────────────
-  // Kommende dage bygget ud fra de faste tider (activeAssignments) plus
-  // eventuelle ekstra undervisningsdage — grupperet pr. dato, så en aflysning
-  // eller en ny ekstra-dag rammer alle elever der har lektion netop den dag.
-  function buildUpcomingTeachDays(count) {
-    const map = {};
-    const todayIso = new Date().toISOString().slice(0, 10);
-    state.activeAssignments.forEach((a) => {
-      datesForWeekday(a.weekday, 0, 8).forEach((iso) => {
-        if (iso < todayIso) return;
-        if (!map[iso]) map[iso] = { students: [] };
-        map[iso].students.push({ name: a.name, time: a.start.slice(0, 5) });
-      });
-    });
-    state.extraDays.forEach((d) => {
-      if (!map[d.date]) map[d.date] = { students: [] };
-      map[d.date].extra = true;
-      d.students.forEach((s) => map[d.date].students.push({ name: s.name, time: s.time }));
-    });
-    return Object.keys(map)
-      .sort()
-      .slice(0, count)
-      .map((iso) => ({ date: iso, ...map[iso] }));
-  }
-
-  function defaultCancelMessage(iso) {
-    return "Hej!\n\nJeg må desværre aflyse undervisningen " + formatDate(iso) + ". Vi finder en ny tid, næste gang vi ses.\n\nMange hilsner,\nOlle";
-  }
-
-  function renderTeachDays() {
-    const list = document.getElementById("teachdays-list");
-    const days = buildUpcomingTeachDays(8);
-    document.getElementById("teachdays-count").textContent = days.filter((d) => !state.cancelledDates.has(d.date)).length;
-    if (days.length === 0) { list.innerHTML = '<p class="empty-state">Ingen planlagte undervisningsdage endnu.</p>'; return; }
-
-    list.innerHTML = "";
-    days.forEach((day) => {
-      const isCancelled = state.cancelledDates.has(day.date);
-      const row = document.createElement("div");
-      row.className = "day-row" + (isCancelled ? " cancelled" : "");
-      row.innerHTML =
-        '<div class="day-top">' +
-        '<div><p class="day-date">' + formatDate(day.date) + (day.extra ? '<span class="tag tag-instr" style="margin-left:8px;">Ekstra dag</span>' : "") + "</p>" +
-        '<p class="day-sub">' + day.students.length + " lektion" + (day.students.length === 1 ? "" : "er") + "</p></div>" +
-        (isCancelled
-          ? '<span class="tag tag-cancelled">Aflyst</span>'
-          : '<button class="btn-text danger cancel-day-toggle">Aflys denne dag</button>') +
-        "</div>" +
-        '<div class="day-students">' + day.students.map((s) => '<span class="day-student-chip">' + s.name + " · " + s.time + "</span>").join("") + "</div>" +
-        '<div class="cancel-form" hidden></div>';
-
-      const toggleBtn = row.querySelector(".cancel-day-toggle");
-      if (toggleBtn) {
-        toggleBtn.addEventListener("click", () => {
-          const form = row.querySelector(".cancel-form");
-          const isOpen = !form.hidden;
-          form.hidden = isOpen ? true : false;
-          if (!isOpen) {
-            form.innerHTML = buildCancelDayFormHtml(day);
-            wireCancelDayForm(form, day);
-          }
-        });
-      }
-      list.appendChild(row);
-    });
-  }
-
-  function buildCancelDayFormHtml(day) {
-    const names = day.students.map((s) => s.name).join(", ");
-    return (
-      '<p class="cf-recipients"><b>Sendes til:</b> ' + names + "</p>" +
-      '<label class="field" style="margin-top:8px;"><span>Besked til eleverne (kan redigeres for denne ene gang)</span><textarea class="cancel-message" rows="5">' + defaultCancelMessage(day.date) + "</textarea></label>" +
-      '<div style="display:flex;gap:10px;margin-top:12px;">' +
-      '<button class="btn btn-primary btn-small confirm-cancel-day">Send aflysning (' + day.students.length + ")</button>" +
-      '<button class="btn-ghost btn-small close-cancel-day">Annullér</button>' +
-      "</div>"
-    );
-  }
-  function wireCancelDayForm(form, day) {
-    form.querySelector(".confirm-cancel-day").addEventListener("click", () => {
-      state.cancelledDates.add(day.date);
-      renderTeachDays();
-      toast("Aflysning sendt til " + day.students.length + " elev" + (day.students.length === 1 ? "" : "er") + " (" + formatDate(day.date) + ").");
-    });
-    form.querySelector(".close-cancel-day").addEventListener("click", () => { form.hidden = true; });
-  }
-
-  function uniqueStudentNames() {
-    return [...new Set(state.activeAssignments.map((a) => a.name))];
-  }
-
-  document.getElementById("add-teachday-toggle").addEventListener("click", () => {
-    const form = document.getElementById("add-teachday-form");
-    const isOpen = !form.hidden;
-    form.hidden = isOpen ? true : false;
-    if (!isOpen) {
-      form.className = "create-day-form";
-      form.innerHTML = buildCreateDayFormHtml();
-      wireCreateDayForm(form);
-    }
-  });
-  function defaultExtraDayMessage(iso) {
-    const dateStr = iso ? formatDate(iso) : "den nye dag";
-    return "Hej!\n\nJeg har oprettet en ekstra undervisningsdag " + dateStr + ". I skulle gerne have modtaget en kalenderinvitation — sig endelig til, hvis den ikke dukker op.\n\nMange hilsner,\nOlle";
-  }
-
-  function buildCreateDayFormHtml() {
-    const names = uniqueStudentNames();
-    return (
-      '<label class="field" style="margin-top:0;"><span>Dato</span><input type="date" class="create-day-date"></label>' +
-      '<label class="field"><span>Hvilke elever skal have en kalenderinvitation?</span></label>' +
-      '<div class="create-day-select-all-row"><label class="check"><input type="checkbox" class="create-day-select-all" checked> Vælg/fravælg alle</label></div>' +
-      '<div class="day-checklist">' +
-      names.map((name) => '<label><input type="checkbox" class="create-day-student" value="' + name + '" checked> ' + name + "</label>").join("") +
-      "</div>" +
-      '<label class="check" style="margin-top:10px;"><input type="checkbox" class="create-day-send-mail"> Send også en mail til eleverne</label>' +
-      '<div class="create-day-mail-wrap" hidden>' +
-      '<label class="field" style="margin-top:8px;"><span>Besked til eleverne (valgfri, kan redigeres)</span><textarea class="create-day-message" rows="5">' + defaultExtraDayMessage(null) + "</textarea></label>" +
-      "</div>" +
-      '<div style="display:flex;gap:10px;margin-top:12px;">' +
-      '<button class="btn btn-primary btn-small confirm-create-day">Opret dag &amp; send kalenderinvitationer</button>' +
-      '<button class="btn-ghost btn-small close-create-day">Annullér</button>' +
-      "</div>"
-    );
-  }
-  function wireCreateDayForm(form) {
-    const dateInput = form.querySelector(".create-day-date");
-    dateInput.addEventListener("click", () => {
-      try { if (dateInput.showPicker) dateInput.showPicker(); } catch (e) { /* ignore — falder tilbage til normal indtastning */ }
-    });
-    const selectAll = form.querySelector(".create-day-select-all");
-    const studentBoxes = Array.from(form.querySelectorAll(".create-day-student"));
-    const sendMailBox = form.querySelector(".create-day-send-mail");
-    const mailWrap = form.querySelector(".create-day-mail-wrap");
-    const messageBox = form.querySelector(".create-day-message");
-
-    selectAll.addEventListener("change", () => {
-      studentBoxes.forEach((box) => { box.checked = selectAll.checked; });
-    });
-    studentBoxes.forEach((box) => {
-      box.addEventListener("change", () => {
-        selectAll.checked = studentBoxes.every((b) => b.checked);
-      });
-    });
-    sendMailBox.addEventListener("change", () => { mailWrap.hidden = !sendMailBox.checked; });
-    dateInput.addEventListener("change", () => {
-      if (!messageBox.dataset.dirty) messageBox.value = defaultExtraDayMessage(dateInput.value);
-    });
-    messageBox.addEventListener("input", () => { messageBox.dataset.dirty = "1"; });
-
-    form.querySelector(".confirm-create-day").addEventListener("click", () => {
-      const dateVal = dateInput.value;
-      const checked = studentBoxes.filter((el) => el.checked).map((el) => el.value);
-      if (!dateVal) { toast("Vælg en dato først."); return; }
-      if (checked.length === 0) { toast("Vælg mindst én elev."); return; }
-      const students = checked.map((name) => {
-        const a = state.activeAssignments.find((x) => x.name === name);
-        return { name, time: a ? a.start.slice(0, 5) : "15:00" };
-      });
-      state.extraDays.push({ date: dateVal, students });
-      document.getElementById("add-teachday-form").hidden = true;
-      renderTeachDays();
-      const mailSuffix = sendMailBox.checked ? " Mail sendt med den viste tekst." : "";
-      toast("Ekstra undervisningsdag oprettet " + formatDate(dateVal) + " — individuel kalenderinvitation sendt til " + checked.length + " elev" + (checked.length === 1 ? "" : "er") + " (" + checked.join(", ") + ")." + mailSuffix);
-    });
-    form.querySelector(".close-create-day").addEventListener("click", () => { document.getElementById("add-teachday-form").hidden = true; });
-  }
-
-  function renderWeekGrid() {
-    const grid = document.getElementById("week-grid");
-    grid.innerHTML = "";
-    WEEKDAYS.forEach((day, wd) => {
-      const col = document.createElement("div");
-      col.className = "week-col";
-      const dayAssignments = state.activeAssignments.filter((a) => a.weekday === wd).sort((a, b) => a.start.localeCompare(b.start));
-      col.innerHTML =
-        '<p class="week-day-label">' + WEEKDAYS_SHORT[wd] + "</p>" +
-        (dayAssignments.length
-          ? dayAssignments.map((a) => '<div class="week-slot"><span class="wtime">' + a.start.slice(0, 5) + "–" + a.end.slice(0, 5) + '</span><span class="wname">' + a.name + "</span></div>").join("")
-          : '<div class="week-empty">—</div>');
-      grid.appendChild(col);
-    });
-  }
-
   function renderWaitlist() {
     const list = document.getElementById("waitlist-list");
-    document.getElementById("waitlist-count").textContent = state.waitlist.length;
-    if (state.waitlist.length === 0) { list.innerHTML = '<p class="empty-state">Ingen har skrevet sig op endnu.</p>'; return; }
+    document.getElementById("waitlist-count").textContent = waitlist.length;
+    if (waitlist.length === 0) { list.innerHTML = '<p class="empty-state">Ingen har skrevet sig op endnu.</p>'; return; }
 
     list.innerHTML = "";
-    state.waitlist.forEach((signup, i) => {
+    waitlist.forEach((signup, i) => {
       const row = document.createElement("div");
       row.className = "wl-row";
-      const preferred = signup.preferredSlotIds.map((id) => state.slots.find((s) => s.id === id)).filter(Boolean);
+      const onsker = (signup.tidspunkter && signup.tidspunkter.length ? signup.tidspunkter.join(", ") : "") || signup.andet_tidspunkt || "—";
+      const ago = signup.created_at ? formatDate(signup.created_at.slice(0, 10)) : "";
       row.innerHTML =
         '<div class="wl-top"><span class="wl-num">' + (i + 1) + "</span>" +
-        '<div class="wl-info"><p class="wl-name">' + signup.name + "</p>" +
-        '<p class="wl-meta">' + signup.email + " · " + signup.phone + " · " + signup.instrument + " · " + signup.agoLabel + "</p>" +
-        (signup.message ? '<p class="wl-message">“' + signup.message + '”</p>' : "") +
-        '<p class="wl-prefs"><b>Ønsker:</b> ' + (preferred.map((s) => slotLabel(s.weekday, s.start, s.end)).join(", ") || "—") + "</p></div>" +
+        '<div class="wl-info"><p class="wl-name">' + signup.navn + "</p>" +
+        '<p class="wl-meta">' + signup.email + " · " + (signup.telefon || "") + " · " + (signup.instrument || "") + " · " + ago + "</p>" +
+        (signup.kommentar ? '<p class="wl-message">“' + signup.kommentar + '”</p>' : "") +
+        '<p class="wl-prefs"><b>Ønsker:</b> ' + onsker + "</p></div>" +
         '<button class="btn-text assign-toggle">Tildel fast tid</button></div>' +
         '<div class="assign-form" hidden></div>';
 
@@ -628,46 +597,52 @@
         const isOpen = !form.hidden;
         form.hidden = isOpen ? true : false;
         if (!isOpen) {
-          form.innerHTML = buildAssignFormHtml(preferred);
-          wireAssignForm(form, signup, preferred);
+          form.innerHTML = buildAssignFormHtml();
+          wireAssignForm(form, signup);
         }
       });
       list.appendChild(row);
     });
   }
 
-  function buildAssignFormHtml(preferred) {
+  function buildAssignFormHtml() {
     return (
-      '<label class="field"><span>Ugedag &amp; tid</span><select class="assign-slot">' +
-      preferred.map((s) => '<option value="' + s.id + '">' + slotLabel(s.weekday, s.start, s.end) + " hver uge</option>").join("") +
+      '<label class="field" style="margin-top:0;"><span>Ugedag</span><select class="assign-weekday">' +
+      WEEKDAYS.map((d, i) => '<option value="' + i + '">' + d + "</option>").join("") +
       "</select></label>" +
+      '<label class="field"><span>Starttid</span><input type="time" class="assign-start" value="15:00"></label>' +
+      '<label class="field"><span>Sluttid</span><input type="time" class="assign-end" value="15:45"></label>' +
+      '<label class="field"><span>Instrument</span><input type="text" class="assign-instrument"></label>' +
       '<label class="check"><input type="checkbox" class="assign-trial"> Prøvelektion (kun denne gang)</label>' +
       '<button class="btn btn-primary btn-small assign-submit">Læg i udkast</button>'
     );
   }
 
-  function wireAssignForm(form, signup, preferred) {
+  function wireAssignForm(form, signup) {
+    form.querySelector(".assign-instrument").value = signup.instrument || "";
     form.querySelector(".assign-submit").addEventListener("click", () => {
-      const slotId = form.querySelector(".assign-slot").value;
+      const weekday = Number(form.querySelector(".assign-weekday").value);
+      const start = form.querySelector(".assign-start").value;
+      const end = form.querySelector(".assign-end").value;
+      const instrument = form.querySelector(".assign-instrument").value.trim() || "Andet";
       const isTrial = form.querySelector(".assign-trial").checked;
-      const slot = preferred.find((s) => s.id === slotId) || state.slots.find((s) => s.id === slotId);
-      if (!slot) return;
+      if (!start || !end) { toast("Vælg start- og sluttid."); return; }
 
       state.draftAssignments.push({
-        id: nextId(), name: signup.name, email: signup.email, phone: signup.phone, instrument: signup.instrument,
-        weekday: slot.weekday, start: slot.start, end: slot.end, isTrial,
-        waitlistId: signup.id, preferredSlotIds: signup.preferredSlotIds,
+        id: nextId(), name: signup.navn, email: signup.email, phone: signup.telefon, instrument,
+        weekday, start, end, isTrial, waitlistId: signup.id,
       });
-      state.waitlist = state.waitlist.filter((s) => s.id !== signup.id);
       renderPlanning();
-      toast(signup.name + " tilføjet til skema-udkastet — intet sendt endnu.");
+      toast(signup.navn + " tilføjet til skema-udkastet — intet oprettet endnu.");
     });
   }
+
+  function slotLabel(weekday, start, end) { return WEEKDAYS_SHORT[weekday] + " " + start.slice(0, 5) + "–" + end.slice(0, 5); }
 
   function renderDrafts() {
     const list = document.getElementById("draft-list");
     document.getElementById("draft-count").textContent = state.draftAssignments.length;
-    document.getElementById("publish-btn").textContent = "Opret i Google Kalender (" + state.selectedDraftIds.size + ")";
+    document.getElementById("publish-btn").textContent = "Opret fast tid (" + state.selectedDraftIds.size + ")";
     document.getElementById("publish-btn").disabled = state.selectedDraftIds.size === 0;
 
     if (state.draftAssignments.length === 0) { list.innerHTML = '<p class="empty-state">Intet i udkastet lige nu.</p>'; return; }
@@ -691,98 +666,109 @@
       row.querySelector(".remove-draft").addEventListener("click", () => {
         state.draftAssignments = state.draftAssignments.filter((d) => d.id !== a.id);
         state.selectedDraftIds.delete(a.id);
-        state.waitlist.push({
-          id: a.waitlistId || nextId(), name: a.name, email: a.email, phone: a.phone || "",
-          instrument: a.instrument, message: "",
-          preferredSlotIds: a.preferredSlotIds && a.preferredSlotIds.length ? a.preferredSlotIds : state.slots.map((s) => s.id),
-          agoLabel: "lagt tilbage",
-        });
         renderPlanning();
       });
       list.appendChild(row);
     });
   }
 
-  document.getElementById("publish-btn").addEventListener("click", () => {
+  document.getElementById("publish-btn").addEventListener("click", async () => {
     const toPublish = state.draftAssignments.filter((a) => state.selectedDraftIds.has(a.id));
     if (toPublish.length === 0) return;
+    const btn = document.getElementById("publish-btn");
+    btn.disabled = true;
+
+    for (const a of toPublish) {
+      let studentId = null;
+      const { data: existing } = await sb.from("students").select("id").eq("email", a.email).maybeSingle();
+      if (existing) {
+        studentId = existing.id;
+      } else {
+        const { data: newStu, error } = await sb.from("students").insert({ name: a.name, email: a.email, phone: a.phone, instrument_onske: a.instrument }).select().single();
+        if (error) { toast("Kunne ikke oprette elev " + a.name + ": " + error.message); continue; }
+        studentId = newStu.id;
+      }
+      const { error: asgErr } = await sb.from("recurring_assignments").insert({
+        student_id: studentId, weekday: a.weekday, start_time: a.start, end_time: a.end,
+        instrument: a.instrument, is_trial: a.isTrial, status: "published", published_at: new Date().toISOString(),
+      });
+      if (asgErr) { toast("Kunne ikke oprette fast tid for " + a.name + ": " + asgErr.message); continue; }
+      if (a.waitlistId) await sb.from("waitlist_signups").update({ status: "assigned" }).eq("id", a.waitlistId);
+    }
 
     state.draftAssignments = state.draftAssignments.filter((a) => !state.selectedDraftIds.has(a.id));
-    toPublish.forEach((a) => state.activeAssignments.push({
-      id: a.id, name: a.name, email: a.email, instrument: a.instrument,
-      weekday: a.weekday, start: a.start, end: a.end, isTrial: a.isTrial,
-      toInvoice: 0, invoiced: 0,
-    }));
     state.selectedDraftIds.clear();
+    await Promise.all([refreshAssignmentsAndStudents(), refreshWaitlist()]);
     renderPlanning();
     toast(
       toPublish.length === 1
-        ? "Tilbagevendende kalenderinvitation oprettet til " + toPublish[0].name + " (" + slotLabel(toPublish[0].weekday, toPublish[0].start, toPublish[0].end) + ", hver uge indtil videre)."
-        : toPublish.length + " tilbagevendende serier oprettet i Google Kalender — én invitation pr. elev."
+        ? "Fast tid oprettet for " + toPublish[0].name + " (" + slotLabel(toPublish[0].weekday, toPublish[0].start, toPublish[0].end) + ", hver uge). Google Kalender-invitation følger i næste fase."
+        : toPublish.length + " faste tider oprettet i databasen. Google Kalender-invitationer følger i næste fase."
     );
   });
 
+  function renderWeekGrid() {
+    const grid = document.getElementById("week-grid");
+    grid.innerHTML = "";
+    WEEKDAYS.forEach((day, wd) => {
+      const col = document.createElement("div");
+      col.className = "week-col";
+      const dayAssignments = assignments.filter((a) => a.weekday === wd).sort((a, b) => a.start_time.localeCompare(b.start_time));
+      col.innerHTML =
+        '<p class="week-day-label">' + WEEKDAYS_SHORT[wd] + "</p>" +
+        (dayAssignments.length
+          ? dayAssignments.map((a) => '<div class="week-slot"><span class="wtime">' + a.start_time.slice(0, 5) + "–" + a.end_time.slice(0, 5) + '</span><span class="wname">' + a.student.name + "</span></div>").join("")
+          : '<div class="week-empty">—</div>');
+      grid.appendChild(col);
+    });
+  }
+
+  function toInvoiceCount(studentId) { return attendanceLog.filter((e) => e.student_id === studentId && e.status === "done" && !e.invoice_id).length; }
+  function invoicedCount(studentId) { return attendanceLog.filter((e) => e.student_id === studentId && e.status === "done" && e.invoice_id).length; }
+
   function renderActive() {
     const list = document.getElementById("active-list");
-    document.getElementById("active-count").textContent = state.activeAssignments.length;
-    if (state.activeAssignments.length === 0) { list.innerHTML = '<p class="empty-state">Ingen faste tider endnu.</p>'; return; }
+    document.getElementById("active-count").textContent = assignments.length;
+    if (assignments.length === 0) { list.innerHTML = '<p class="empty-state">Ingen faste tider endnu.</p>'; return; }
 
     list.innerHTML = "";
-    state.activeAssignments.forEach((a) => {
+    assignments.forEach((a) => {
+      const toBill = toInvoiceCount(a.student_id);
       const row = document.createElement("div");
       row.className = "divider-row";
       row.innerHTML =
-        '<span class="row-title"><span class="name">' + a.name + "</span>" +
-        '<span class="tag tag-instr">' + a.instrument + "</span>" +
-        '<span class="tag tag-recurring">' + slotLabel(a.weekday, a.start, a.end) + " hver uge</span>" +
-        (a.toInvoice > 0 ? '<span class="tag tag-tobill">' + a.toInvoice + " til fakturering</span>" : "") + "</span>" +
-        '<button class="btn-text danger cancel-one">Aflys næste gang</button>';
-
-      row.querySelector(".cancel-one").addEventListener("click", () => {
-        if (!confirm("Aflys næste lektion for " + a.name + "? Kun den dato fjernes fra kalenderen — resten af den faste tid ligger fast.")) return;
-        renderActive();
-        toast("Næste lektion for " + a.name + " aflyst — fjernet fra netop den dag i kalenderen, resten af serien er urørt.");
-      });
+        '<span class="row-title"><span class="name">' + a.student.name + "</span>" +
+        '<span class="tag tag-instr">' + (a.instrument || "") + "</span>" +
+        '<span class="tag tag-recurring">' + slotLabel(a.weekday, a.start_time, a.end_time) + " hver uge</span>" +
+        (toBill > 0 ? '<span class="tag tag-tobill">' + toBill + " til fakturering</span>" : "") + "</span>";
       list.appendChild(row);
     });
   }
 
-  // status: "upcoming" (kommende) · "tobill" (gennemført, skal faktureres) · "billed" (faktureret) · "cancelled" (aflyst)
-  const CURATED_EVENTS = [
-    { name: "Oskar N.", instrument: "Guitar", date: addDays(-3), start: "14:30", status: "billed" },
-    { name: "Sofie W.", instrument: "Piano", date: addDays(-2), start: "17:00", status: "cancelled" },
-    { name: "William H.", instrument: "Piano", date: addDays(9), start: "15:00", status: "upcoming" },
-  ];
   const STATUS_TAG = {
     upcoming: '<span class="tag tag-instr">Kommende</span>',
     tobill: '<span class="tag tag-tobill">Skal faktureres</span>',
     billed: '<span class="tag tag-done">Faktureret</span>',
     cancelled: '<span class="tag tag-cancelled">Aflyst</span>',
   };
-  function classifyByDate(iso) {
-    const days = Math.round((new Date(iso + "T00:00:00") - new Date(new Date().toDateString())) / 86400000);
-    if (days >= 0) return "upcoming";
-    return -days > 7 ? "billed" : "tobill";
-  }
-  function datesForWeekday(weekdayIdx, weeksBack, weeksForward) {
-    const targetDow = weekdayIdx + 1;
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    const base = new Date(d);
-    base.setDate(base.getDate() + (targetDow - d.getDay()));
-    const dates = [];
-    for (let w = -weeksBack; w <= weeksForward; w++) {
-      const dt = new Date(base);
-      dt.setDate(dt.getDate() + w * 7);
-      dates.push(dt.toISOString().slice(0, 10));
+  function isCancelled(iso) { return cancelledDates.some((c) => c.lesson_date === iso); }
+  function classifyDate(studentId, iso) {
+    if (isCancelled(iso)) return "cancelled";
+    const todayIso = new Date().toISOString().slice(0, 10);
+    if (iso > todayIso) return "upcoming";
+    const log = attendanceLog.find((e) => e.student_id === studentId && e.lesson_date === iso);
+    if (log) {
+      if (log.status === "cancelled") return "cancelled";
+      if (log.status === "no_show") return "tobill";
+      return log.invoice_id ? "billed" : "tobill";
     }
-    return dates;
+    return "tobill";
   }
   function buildReconciliationEvents() {
-    const events = [...CURATED_EVENTS];
-    state.activeAssignments.forEach((a) => {
+    const events = [];
+    assignments.forEach((a) => {
       datesForWeekday(a.weekday, 4, 4).forEach((iso) => {
-        events.push({ name: a.name, instrument: a.instrument, date: iso, start: a.start, status: classifyByDate(iso) });
+        events.push({ name: a.student.name, instrument: a.instrument || "", date: iso, start: a.start_time.slice(0, 5), status: classifyDate(a.student_id, iso) });
       });
     });
     return events.sort((x, y) => x.date.localeCompare(y.date) || x.start.localeCompare(y.start));
@@ -830,113 +816,28 @@
     }
   }
 
-  const LESSON_PRICE = { Piano: 450, Guitar: 450, Sang: 480, Andet: 450 };
-  function formatKr(amount) { return amount.toLocaleString("da-DK") + " kr."; }
-
-  const invoices = [
-    { id: "inv1", name: "Emma S.", email: "emma.s@mail.com", instrument: "Piano", period: "August 2026", lessons: 3, amount: 3 * LESSON_PRICE.Piano, status: "draft",
-      lines: [
-        { date: "2026-08-05", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
-        { date: "2026-08-12", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
-        { date: "2026-08-19", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
-      ] },
-    { id: "inv2", name: "Lucas B.", email: "lucas.b@mail.com", instrument: "Guitar", period: "August 2026", lessons: 1, amount: 1 * LESSON_PRICE.Guitar, status: "draft",
-      lines: [{ date: "2026-08-19", desc: "Guitarlektion, 45 min", amount: LESSON_PRICE.Guitar }] },
-    { id: "inv3", name: "Oskar N.", email: "oskar.n@mail.com", instrument: "Guitar", period: "Juli 2026", lessons: 4, amount: 4 * LESSON_PRICE.Guitar, status: "sent",
-      lines: [
-        { date: "2026-07-01", desc: "Guitarlektion, 45 min", amount: LESSON_PRICE.Guitar },
-        { date: "2026-07-08", desc: "Guitarlektion, 45 min", amount: LESSON_PRICE.Guitar },
-        { date: "2026-07-15", desc: "Guitarlektion, 45 min", amount: LESSON_PRICE.Guitar },
-        { date: "2026-07-22", desc: "Guitarlektion, 45 min", amount: LESSON_PRICE.Guitar },
-      ] },
-    { id: "inv4", name: "Sofie W.", email: "sofie.w@mail.com", instrument: "Piano", period: "Juli 2026", lessons: 4, amount: 4 * LESSON_PRICE.Piano, status: "paid",
-      lines: [
-        { date: "2026-07-01", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
-        { date: "2026-07-08", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
-        { date: "2026-07-15", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
-        { date: "2026-07-22", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano },
-      ] },
-    { id: "inv5", name: "William H.", email: "william.h@mail.com", instrument: "Piano", period: "Juni 2026", lessons: 1, amount: 1 * LESSON_PRICE.Piano, status: "paid",
-      lines: [{ date: "2026-06-28", desc: "Pianolektion, 45 min", amount: LESSON_PRICE.Piano }] },
-  ];
+  function formatKr(amount) { return Number(amount).toLocaleString("da-DK") + " kr."; }
   const INVOICE_STATUS_LABEL = {
     draft: '<span class="tag tag-tobill">Kladde</span>',
     sent: '<span class="tag tag-sent">Sendt — afventer betaling</span>',
     paid: '<span class="tag tag-done">Betalt</span>',
   };
 
-  function renderInvoices() {
+  async function renderInvoices() {
     const list = document.getElementById("invoices-list");
+    const { data: invoices } = await sb.from("invoices").select("*, invoice_lines(*), students(name, email)").order("created_at", { ascending: false });
     list.innerHTML = "";
-    if (invoices.length === 0) { list.innerHTML = '<p class="empty-state">Ingen fakturaer endnu.</p>'; return; }
+    if (!invoices || invoices.length === 0) { list.innerHTML = '<p class="empty-state">Ingen fakturaer endnu — oprettes automatisk som kladde, når faktureringsflowet bygges i næste fase.</p>'; return; }
 
-    invoices
-      .slice()
-      .sort((a, b) => (a.status === b.status ? 0 : a.status === "draft" ? -1 : b.status === "draft" ? 1 : a.status === "sent" ? -1 : 1))
-      .forEach((inv) => {
-        const row = document.createElement("div");
-        row.className = "invoice-row";
-        row.innerHTML =
-          '<span class="iname">' + inv.name + '<span class="iperiod">' + inv.period + " · " + inv.lessons + " lektioner</span></span>" +
-          '<span class="iamount">' + formatKr(inv.amount) + "</span>" +
-          INVOICE_STATUS_LABEL[inv.status] +
-          '<button class="btn-text toggle-preview" style="margin-left:10px;">' + (inv.status === "draft" ? "Se &amp; godkend faktura" : "Se faktura") + "</button>" +
-          (inv.status === "sent" ? '<button class="btn-text mark-paid" style="margin-left:10px;">Markér som betalt</button>' : "");
-
-        const preview = document.createElement("div");
-        preview.hidden = true;
-
-        row.querySelector(".toggle-preview").addEventListener("click", () => {
-          const isOpen = !preview.hidden;
-          preview.hidden = isOpen;
-          if (!isOpen) { preview.innerHTML = buildInvoicePreviewHtml(inv); wireInvoicePreview(preview, inv); }
-        });
-        const paidBtn = row.querySelector(".mark-paid");
-        if (paidBtn) {
-          paidBtn.addEventListener("click", () => {
-            inv.status = "paid";
-            renderInvoices();
-            toast("Faktura for " + inv.name + " markeret som betalt.");
-          });
-        }
-        list.appendChild(row);
-        list.appendChild(preview);
-      });
-  }
-
-  function buildInvoicePreviewHtml(inv) {
-    const momsPart = Math.round(inv.amount - inv.amount / 1.25);
-    const lines = (inv.lines || [])
-      .map((l) => '<tr><td>' + formatDate(l.date) + "</td><td>" + l.desc + "</td><td>" + formatKr(l.amount) + "</td></tr>")
-      .join("");
-    return (
-      '<div class="invoice-preview">' +
-      '<div class="invoice-preview-head">' +
-      '<div><p class="ip-label">Fra</p><p class="ip-strong">Olles lille musikskole</p><p class="ip-faint">CVR-nr. — hentes automatisk fra e-conomic</p></div>' +
-      '<div><p class="ip-label">Til</p><p class="ip-strong">' + inv.name + "</p><p class=\"ip-faint\">" + inv.email + "</p></div>" +
-      "</div>" +
-      '<div class="invoice-preview-meta"><span>Periode: ' + inv.period + "</span><span>" + inv.lessons + " lektion" + (inv.lessons === 1 ? "" : "er") + "</span></div>" +
-      '<table class="invoice-lines"><thead><tr><th>Dato</th><th>Beskrivelse</th><th>Beløb</th></tr></thead><tbody>' + lines + "</tbody></table>" +
-      '<div class="invoice-totals"><div class="line sub"><span>Heraf moms (25%)</span><span>' + formatKr(momsPart) + "</span></div>" +
-      '<div class="line total"><span>I alt</span><span>' + formatKr(inv.amount) + "</span></div></div>" +
-      '<p class="ip-hint">Sådan kommer fakturaen til at se ud i e-conomic — beløb og momssats hentes fra jeres opsætning der, når den rigtige integration er bygget.</p>' +
-      (inv.status === "draft"
-        ? '<div class="invoice-preview-actions"><button class="btn btn-primary btn-small confirm-invoice">Bekræft &amp; opret i e-conomic</button><button class="btn-ghost btn-small close-preview">Luk</button></div>'
-        : "") +
-      "</div>"
-    );
-  }
-  function wireInvoicePreview(holder, inv) {
-    const confirmBtn = holder.querySelector(".confirm-invoice");
-    if (confirmBtn) {
-      confirmBtn.addEventListener("click", () => {
-        inv.status = "sent";
-        renderInvoices();
-        toast("Faktura oprettet i e-conomic — husk at trykke \"send\" der for at sende den til " + inv.name + " (" + formatKr(inv.amount) + ").");
-      });
-    }
-    const closeBtn = holder.querySelector(".close-preview");
-    if (closeBtn) closeBtn.addEventListener("click", () => { holder.hidden = true; });
+    invoices.forEach((inv) => {
+      const row = document.createElement("div");
+      row.className = "invoice-row";
+      row.innerHTML =
+        '<span class="iname">' + (inv.students ? inv.students.name : "?") + '<span class="iperiod">' + inv.period_start + " – " + inv.period_end + "</span></span>" +
+        '<span class="iamount">' + formatKr(inv.total_amount) + "</span>" +
+        (INVOICE_STATUS_LABEL[inv.status] || "");
+      list.appendChild(row);
+    });
   }
 
   function renderStats() {
@@ -952,6 +853,7 @@
     const nearbyEvents = events.filter((e) => Math.abs((new Date(e.date + "T00:00:00") - new Date(todayIso + "T00:00:00")) / 86400000) <= 10);
     const list = document.getElementById("reconciliation-list");
     list.innerHTML = "";
+    if (nearbyEvents.length === 0) list.innerHTML = '<p class="empty-state">Ingen lektioner i denne periode.</p>';
     nearbyEvents.forEach((e) => {
       const row = document.createElement("div");
       row.className = "divider-row";
@@ -967,73 +869,234 @@
     renderInvoices();
   }
 
+  // ═══════════════════════ UNDERVISNINGSDAGE ═══════════════════════
+  function buildUpcomingTeachDays(count) {
+    const map = {};
+    const todayIso = new Date().toISOString().slice(0, 10);
+    assignments.forEach((a) => {
+      datesForWeekday(a.weekday, 0, 8).forEach((iso) => {
+        if (iso < todayIso) return;
+        if (!map[iso]) map[iso] = { students: [] };
+        map[iso].students.push({ name: a.student.name, time: a.start_time.slice(0, 5) });
+      });
+    });
+    extraDays.forEach((d) => {
+      if (d.lesson_date < todayIso) return;
+      if (!map[d.lesson_date]) map[d.lesson_date] = { students: [] };
+      map[d.lesson_date].extra = true;
+      (d.student_ids || []).forEach((sid) => {
+        const s = studentById(sid);
+        const a = assignments.find((x) => x.student_id === sid);
+        map[d.lesson_date].students.push({ name: s ? s.name : "?", time: a ? a.start_time.slice(0, 5) : "—" });
+      });
+    });
+    return Object.keys(map)
+      .sort()
+      .slice(0, count)
+      .map((iso) => ({ date: iso, ...map[iso] }));
+  }
+
+  function defaultCancelMessage(iso) {
+    return "Hej!\n\nJeg må desværre aflyse undervisningen " + formatDate(iso) + ". Vi finder en ny tid, næste gang vi ses.\n\nMange hilsner,\nOlle";
+  }
+
+  function renderTeachDays() {
+    const list = document.getElementById("teachdays-list");
+    const days = buildUpcomingTeachDays(8);
+    document.getElementById("teachdays-count").textContent = days.filter((d) => !isCancelled(d.date)).length;
+    if (days.length === 0) { list.innerHTML = '<p class="empty-state">Ingen planlagte undervisningsdage endnu.</p>'; return; }
+
+    list.innerHTML = "";
+    days.forEach((day) => {
+      const cancelled = isCancelled(day.date);
+      const row = document.createElement("div");
+      row.className = "day-row" + (cancelled ? " cancelled" : "");
+      row.innerHTML =
+        '<div class="day-top">' +
+        '<div><p class="day-date">' + formatDate(day.date) + (day.extra ? '<span class="tag tag-instr" style="margin-left:8px;">Ekstra dag</span>' : "") + "</p>" +
+        '<p class="day-sub">' + day.students.length + " lektion" + (day.students.length === 1 ? "" : "er") + "</p></div>" +
+        (cancelled
+          ? '<span class="tag tag-cancelled">Aflyst</span>'
+          : '<button class="btn-text danger cancel-day-toggle">Aflys denne dag</button>') +
+        "</div>" +
+        '<div class="day-students">' + day.students.map((s) => '<span class="day-student-chip">' + s.name + " · " + s.time + "</span>").join("") + "</div>" +
+        '<div class="cancel-form" hidden></div>';
+
+      const toggleBtn = row.querySelector(".cancel-day-toggle");
+      if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+          const form = row.querySelector(".cancel-form");
+          const isOpen = !form.hidden;
+          form.hidden = isOpen ? true : false;
+          if (!isOpen) {
+            form.innerHTML = buildCancelDayFormHtml(day);
+            wireCancelDayForm(form, day);
+          }
+        });
+      }
+      list.appendChild(row);
+    });
+  }
+
+  function buildCancelDayFormHtml(day) {
+    const names = day.students.map((s) => s.name).join(", ");
+    return (
+      '<p class="cf-recipients"><b>Sendes til:</b> ' + names + "</p>" +
+      '<label class="field" style="margin-top:8px;"><span>Besked til eleverne (kan redigeres for denne ene gang)</span><textarea class="cancel-message" rows="5">' + defaultCancelMessage(day.date) + "</textarea></label>" +
+      '<div style="display:flex;gap:10px;margin-top:12px;">' +
+      '<button class="btn btn-primary btn-small confirm-cancel-day">Bekræft aflysning (' + day.students.length + ")</button>" +
+      '<button class="btn-ghost btn-small close-cancel-day">Annullér</button>' +
+      "</div>"
+    );
+  }
+  function wireCancelDayForm(form, day) {
+    form.querySelector(".confirm-cancel-day").addEventListener("click", async () => {
+      const message = form.querySelector(".cancel-message").value;
+      const { error } = await sb.from("cancelled_lesson_dates").insert({ lesson_date: day.date, message });
+      if (error) { toast("Kunne ikke aflyse dagen: " + error.message); return; }
+      await refreshTeachDays();
+      renderTeachDays();
+      toast("Dagen er markeret aflyst for " + day.students.length + " elev" + (day.students.length === 1 ? "" : "er") + " (" + formatDate(day.date) + "). Rigtig mailudsendelse kobles på i næste fase.");
+    });
+    form.querySelector(".close-cancel-day").addEventListener("click", () => { form.hidden = true; });
+  }
+
+  function uniqueStudentsWithAssignment() {
+    const seen = new Set();
+    return assignments.filter((a) => { if (seen.has(a.student_id)) return false; seen.add(a.student_id); return true; }).map((a) => ({ id: a.student_id, name: a.student.name, time: a.start_time.slice(0, 5) }));
+  }
+
+  document.getElementById("add-teachday-toggle").addEventListener("click", () => {
+    const form = document.getElementById("add-teachday-form");
+    const isOpen = !form.hidden;
+    form.hidden = isOpen ? true : false;
+    if (!isOpen) {
+      form.className = "create-day-form";
+      form.innerHTML = buildCreateDayFormHtml();
+      wireCreateDayForm(form);
+    }
+  });
+  function defaultExtraDayMessage(iso) {
+    const dateStr = iso ? formatDate(iso) : "den nye dag";
+    return "Hej!\n\nJeg har oprettet en ekstra undervisningsdag " + dateStr + ". Sig endelig til, hvis du ikke hører nærmere om tidspunkt.\n\nMange hilsner,\nOlle";
+  }
+
+  function buildCreateDayFormHtml() {
+    const list = uniqueStudentsWithAssignment();
+    return (
+      '<label class="field" style="margin-top:0;"><span>Dato</span><input type="date" class="create-day-date"></label>' +
+      '<label class="field"><span>Hvilke elever gælder det?</span></label>' +
+      '<div class="create-day-select-all-row"><label class="check"><input type="checkbox" class="create-day-select-all" checked> Vælg/fravælg alle</label></div>' +
+      '<div class="day-checklist">' +
+      list.map((s) => '<label><input type="checkbox" class="create-day-student" value="' + s.id + '" checked> ' + s.name + "</label>").join("") +
+      "</div>" +
+      '<label class="check" style="margin-top:10px;"><input type="checkbox" class="create-day-send-mail"> Send også en mail til eleverne</label>' +
+      '<div class="create-day-mail-wrap" hidden>' +
+      '<label class="field" style="margin-top:8px;"><span>Besked til eleverne (valgfri, kan redigeres)</span><textarea class="create-day-message" rows="5">' + defaultExtraDayMessage(null) + "</textarea></label>" +
+      "</div>" +
+      '<div style="display:flex;gap:10px;margin-top:12px;">' +
+      '<button class="btn btn-primary btn-small confirm-create-day">Opret dag</button>' +
+      '<button class="btn-ghost btn-small close-create-day">Annullér</button>' +
+      "</div>"
+    );
+  }
+  function wireCreateDayForm(form) {
+    const dateInput = form.querySelector(".create-day-date");
+    dateInput.addEventListener("click", () => {
+      try { if (dateInput.showPicker) dateInput.showPicker(); } catch (e) { /* ignore — falder tilbage til normal indtastning */ }
+    });
+    const selectAll = form.querySelector(".create-day-select-all");
+    const studentBoxes = Array.from(form.querySelectorAll(".create-day-student"));
+    const sendMailBox = form.querySelector(".create-day-send-mail");
+    const mailWrap = form.querySelector(".create-day-mail-wrap");
+    const messageBox = form.querySelector(".create-day-message");
+
+    selectAll.addEventListener("change", () => { studentBoxes.forEach((box) => { box.checked = selectAll.checked; }); });
+    studentBoxes.forEach((box) => { box.addEventListener("change", () => { selectAll.checked = studentBoxes.every((b) => b.checked); }); });
+    sendMailBox.addEventListener("change", () => { mailWrap.hidden = !sendMailBox.checked; });
+    dateInput.addEventListener("change", () => { if (!messageBox.dataset.dirty) messageBox.value = defaultExtraDayMessage(dateInput.value); });
+    messageBox.addEventListener("input", () => { messageBox.dataset.dirty = "1"; });
+
+    form.querySelector(".confirm-create-day").addEventListener("click", async () => {
+      const dateVal = dateInput.value;
+      const checkedIds = studentBoxes.filter((el) => el.checked).map((el) => el.value);
+      if (!dateVal) { toast("Vælg en dato først."); return; }
+      if (checkedIds.length === 0) { toast("Vælg mindst én elev."); return; }
+      const message = sendMailBox.checked ? messageBox.value : null;
+      const { error } = await sb.from("extra_teaching_days").insert({ lesson_date: dateVal, message, student_ids: checkedIds, send_mail: sendMailBox.checked });
+      if (error) { toast("Kunne ikke oprette dagen: " + error.message); return; }
+      document.getElementById("add-teachday-form").hidden = true;
+      await refreshTeachDays();
+      renderTeachDays();
+      const names = checkedIds.map((id) => { const s = studentById(id); return s ? s.name : "?"; }).join(", ");
+      toast("Ekstra undervisningsdag oprettet " + formatDate(dateVal) + " for " + checkedIds.length + " elev" + (checkedIds.length === 1 ? "" : "er") + " (" + names + "). Rigtig kalenderinvitation/mail kobles på i næste fase.");
+    });
+    form.querySelector(".close-create-day").addEventListener("click", () => { document.getElementById("add-teachday-form").hidden = true; });
+  }
+
   // ═══════════════════════ I DAG ═══════════════════════
-  const todayLessons = [
-    { id: "t1", name: "Emma S.", instrument: "Piano", start: "14:00", status: "upcoming", isTrial: false,
-      currentFocus: "Øver tonleiter C-dur og forbereder Für Elise til efterårskoncerten.",
-      prepNote: "", draftStudentNote: "",
-      history: [
-        { date: "2026-08-12", summary: "Gennemgik tonleiter C-dur, startede på Für Elise takt 1–8." },
-        { date: "2026-08-05", summary: "Repetition af sommerens stykker, snakkede om den nye sæson." },
-        { date: "2026-06-24", summary: "Sidste lektion før sommerpausen — opsummerede årets fremgang." },
-      ],
-      videos: [{ title: "Tonleiter C-dur — lektie", song: "Für Elise" }, { title: "Für Elise, første del", song: "Für Elise" }],
-      files: [] },
-    { id: "t2", name: "Lucas B.", instrument: "Guitar", start: "15:00", status: "upcoming", isTrial: false,
-      currentFocus: "Arbejder med F-barré og intro-riffet til \"Wonderwall\".",
-      prepNote: "", draftStudentNote: "",
-      history: [
-        { date: "2026-08-12", summary: "Introducerede F-barré, øvede overgang G→F→C." },
-        { date: "2026-08-05", summary: "Startede på \"Wonderwall\" — intro-riff." },
-      ],
-      videos: [],
-      files: [] },
-    { id: "t3", name: "Ida K.", instrument: "Piano", start: "16:30", status: "upcoming", isTrial: true,
-      currentFocus: "Prøvelektion — intet tidligere forløb endnu.",
-      prepNote: "Spørg ind til erfaring og hvad hun håber at lære.", draftStudentNote: "",
-      history: [],
-      videos: [],
-      files: [] },
-  ];
   const STUDENT_COLOR_KEYS = ["accent", "rose", "sage"];
   function studentColorKey(idx) { return STUDENT_COLOR_KEYS[idx % STUDENT_COLOR_KEYS.length]; }
   function initials(name) { return name.split(" ").filter(Boolean).map((p) => p[0]).join("").toUpperCase().slice(0, 2); }
 
+  function todaysLessons() {
+    const wd = todayWeekdayIdx();
+    if (wd < 0) return [];
+    const todayIso = new Date().toISOString().slice(0, 10);
+    if (isCancelled(todayIso)) return [];
+    return assignments.filter((a) => a.weekday === wd);
+  }
+  function lastNoteFor(studentId) {
+    const notes = lessonNotes.filter((n) => n.student_id === studentId).sort((a, b) => b.lesson_date.localeCompare(a.lesson_date));
+    return notes[0] || null;
+  }
+  function attendanceForToday(studentId) {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return attendanceLog.find((e) => e.student_id === studentId && e.lesson_date === todayIso) || null;
+  }
+
   function renderToday() {
     const el = document.getElementById("today-list");
+    const lessons = todaysLessons();
+    const dayNames = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"];
+    document.querySelector("#view-today .page-head h1").textContent = "I dag — " + dayNames[new Date().getDay()];
     el.innerHTML = "";
-    todayLessons.forEach((lesson, idx) => {
+    if (lessons.length === 0) { el.innerHTML = '<p class="empty-state">Ingen faste lektioner i dag.</p>'; return; }
+
+    lessons.forEach((a, idx) => {
       const card = document.createElement("div");
       const colorKey = studentColorKey(idx);
       card.className = "lesson-card color-" + colorKey;
-      const lastEntry = (lesson.history || []).slice().sort((a, b) => b.date.localeCompare(a.date))[0];
+      const lastEntry = lastNoteFor(a.student_id);
+      const attendance = attendanceForToday(a.student_id);
+      const isDone = attendance && attendance.status === "done";
       card.innerHTML =
-        '<div class="lesson-card-top"><span class="lesson-avatar color-' + colorKey + '">' + initials(lesson.name) + "</span>" +
-        '<span class="mono-time" style="width:auto;">' + lesson.start + "</span>" +
-        '<span class="row-title"><span class="name">' + lesson.name + "</span>" +
-        '<span class="tag tag-instr">' + lesson.instrument + "</span>" +
-        (lesson.isTrial ? '<span class="tag tag-trial">Prøvelektion</span>' : "") + "</span>" +
-        (lesson.status === "done" ? '<span class="tag tag-done">Fremmøde registreret</span>' : '<button class="btn-text open-lesson">Åbn</button>') +
+        '<div class="lesson-card-top"><span class="lesson-avatar color-' + colorKey + '">' + initials(a.student.name) + "</span>" +
+        '<span class="mono-time" style="width:auto;">' + a.start_time.slice(0, 5) + "</span>" +
+        '<span class="row-title"><span class="name">' + a.student.name + "</span>" +
+        '<span class="tag tag-instr">' + (a.instrument || "") + "</span>" +
+        (a.is_trial ? '<span class="tag tag-trial">Prøvelektion</span>' : "") + "</span>" +
+        (isDone ? '<span class="tag tag-done">Fremmøde registreret</span>' : '<button class="btn-text open-lesson">Åbn</button>') +
         "</div>" +
-        (lesson.currentFocus ? '<p class="lesson-focus">' + lesson.currentFocus + "</p>" : "") +
+        (a.student.current_focus ? '<p class="lesson-focus">' + a.student.current_focus + "</p>" : "") +
         '<div class="lesson-quicknote">' +
-        (lastEntry ? '<p class="lesson-lastnote"><span class="ll-label">Sidste gang (' + formatDate(lastEntry.date) + ')</span>' + lastEntry.summary + "</p>" : "") +
-        '<label class="field"><span>Note til i dag — hvad skal I kigge på?</span><textarea class="prep-note-inline" placeholder="F.eks. tempo på venstre hånd, ny etude, spørg om koncertnervøsitet …">' + (lesson.prepNote || "") + "</textarea></label>" +
+        (lastEntry ? '<p class="lesson-lastnote"><span class="ll-label">Sidste gang (' + formatDate(lastEntry.lesson_date) + ')</span>' + lastEntry.summary + "</p>" : "") +
+        '<label class="field"><span>Note til i dag — hvad skal I kigge på?</span><textarea class="prep-note-inline" placeholder="F.eks. tempo på venstre hånd, ny etude, spørg om koncertnervøsitet …">' + (a.student.current_focus || "") + "</textarea></label>" +
         "</div>" +
         '<div class="lesson-card-detail" hidden></div>';
 
       const prepEl = card.querySelector(".prep-note-inline");
-      prepEl.addEventListener("blur", () => {
-        lesson.prepNote = prepEl.value;
-        toast("Note gemt til " + lesson.name + "s lektion i dag.");
+      prepEl.addEventListener("blur", async () => {
+        const { error } = await sb.from("students").update({ current_focus: prepEl.value }).eq("id", a.student_id);
+        if (!error) { a.student.current_focus = prepEl.value; toast("Note gemt til " + a.student.name + "s lektion i dag."); }
       });
 
       const openBtn = card.querySelector(".open-lesson");
       const detailEl = card.querySelector(".lesson-card-detail");
       function openLessonDetail() {
         detailEl.hidden = false;
-        detailEl.innerHTML = buildLessonDetailHtml(lesson);
-        wireLessonDetail(detailEl, lesson);
+        detailEl.innerHTML = buildLessonDetailHtml(a);
+        wireLessonDetail(detailEl, a);
         if (openBtn) openBtn.textContent = "Luk";
       }
       function closeLessonDetail() {
@@ -1041,42 +1104,36 @@
         if (openBtn) openBtn.textContent = "Åbn";
       }
       if (openBtn) {
-        openBtn.addEventListener("click", () => {
-          if (detailEl.hidden) openLessonDetail(); else closeLessonDetail();
-        });
-        // Åben som standard, så video- og registrér-knapperne er lige ved hånden.
+        openBtn.addEventListener("click", () => { if (detailEl.hidden) openLessonDetail(); else closeLessonDetail(); });
         openLessonDetail();
       }
       el.appendChild(card);
     });
   }
-  function buildLessonDetailHtml(lesson) {
-    const videoGroups = {};
-    (lesson.videos || []).forEach((v) => (videoGroups[v.song] = videoGroups[v.song] || []).push(v));
-    const videoHtml = Object.keys(videoGroups).length
-      ? Object.entries(videoGroups).map(([song, vids]) =>
-          '<div class="song-group"><p class="song-name">' + song + "</p>" +
-          vids.map((v) => '<div class="video-row"><span class="video-play">▶</span><span class="video-info"><span class="vtitle">' + v.title + "</span></span></div>").join("") + "</div>"
-        ).join("")
+
+  function buildLessonDetailHtml(a) {
+    const media = lessonMedia.filter((m) => m.student_id === a.student_id);
+    const videos = media.filter((m) => m.type === "video");
+    const files = media.filter((m) => m.type === "file");
+    const videoHtml = videos.length
+      ? videos.map((v) => '<div class="video-row"><span class="video-play">▶</span><span class="video-info"><span class="vtitle">' + v.title + "</span></span></div>").join("")
       : '<p class="empty-state" style="padding:12px 0;">Ingen videoer uploadet endnu.</p>';
-    const filesHtml = (lesson.files || []).length
-      ? (lesson.files || []).map((f) => '<div class="video-row"><span class="video-play">📄</span><span class="video-info"><span class="vtitle">' + f.title + "</span></span></div>").join("")
+    const filesHtml = files.length
+      ? files.map((f) => '<div class="video-row"><span class="video-play">📄</span><span class="video-info"><span class="vtitle">' + f.title + "</span></span></div>").join("")
       : '<p class="empty-state" style="padding:12px 0;">Ingen filer uploadet endnu.</p>';
-    const history = lesson.history || [];
+    const history = lessonNotes.filter((n) => n.student_id === a.student_id).sort((x, y) => y.lesson_date.localeCompare(x.lesson_date));
     const historyHtml = history.length
-      ? history
-          .slice()
-          .sort((a, b) => b.date.localeCompare(a.date))
-          .map((h) => '<div class="divider-row" style="padding:9px 0;"><span class="mono-date">' + formatDate(h.date) + '</span><span class="row-title" style="font-size:13px;">' + h.summary + (h.sentToStudent ? ' <span class="tag tag-done" style="margin-left:6px;">Sendt til elev</span>' : "") + "</span></div>")
-          .join("")
+      ? history.map((h) => '<div class="divider-row" style="padding:9px 0;"><span class="mono-date">' + formatDate(h.lesson_date) + '</span><span class="row-title" style="font-size:13px;">' + h.summary + (h.sent_to_student ? ' <span class="tag tag-done" style="margin-left:6px;">Sendt til elev</span>' : "") + "</span></div>").join("")
       : '<p class="empty-state" style="padding:12px 0;">Ingen tidligere lektioner endnu.</p>';
     return (
-      '<label class="field" style="margin-top:0;"><span>Note til eleven — hvad har I arbejdet med i dag?</span><textarea class="student-note" placeholder="Skrives til eleven, når du registrerer fremmøde — vises på elevens egen side.">' + (lesson.draftStudentNote || "") + "</textarea></label>" +
-      '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">' + (lesson.isTrial ? "Prøvelektion — tilføjes til fakturering separat." : "Tilføjes blandt lektioner der skal faktureres.") + "</p>" +
+      '<label class="field" style="margin-top:0;"><span>Note til eleven — hvad har I arbejdet med i dag?</span><textarea class="student-note" placeholder="Skrives til eleven, når du registrerer fremmøde — vises på elevens egen side."></textarea></label>' +
+      '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">' + (a.is_trial ? "Prøvelektion — tilføjes til fakturering separat." : "Tilføjes blandt lektioner der skal faktureres.") + "</p>" +
       '<button class="btn btn-primary btn-small register-attendance">Registrér fremmøde &amp; send note</button>' +
       '<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">' +
       '<div class="upload-drop add-video" style="flex:1;min-width:180px;">＋ Tilføj video</div>' +
       '<div class="upload-drop add-file" style="flex:1;min-width:180px;">＋ Tilføj fil (fx akkorder, PDF)</div>' +
+      '<input type="file" accept="video/*" class="file-input-video" hidden>' +
+      '<input type="file" class="file-input-file" hidden>' +
       "</div>" +
       '<div style="margin-top:16px;"><div class="section-label" style="margin-bottom:8px;"><span>Videoer</span></div>' + videoHtml + "</div>" +
       '<div style="margin-top:14px;"><div class="section-label" style="margin-bottom:8px;"><span>Filer</span></div>' + filesHtml + "</div>" +
@@ -1086,11 +1143,8 @@
       "</div>"
     );
   }
-  function wireLessonDetail(detail, lesson) {
+  function wireLessonDetail(detail, a) {
     const noteEl = detail.querySelector(".student-note");
-    if (noteEl) {
-      noteEl.addEventListener("input", () => { lesson.draftStudentNote = noteEl.value; });
-    }
     const histBtn = detail.querySelector(".toggle-history");
     if (histBtn) {
       histBtn.addEventListener("click", () => {
@@ -1098,48 +1152,53 @@
         histList.hidden = !histList.hidden;
       });
     }
-    detail.querySelector(".register-attendance").addEventListener("click", () => {
-      lesson.status = "done";
-      const mine = state.activeAssignments.find((a) => a.name === lesson.name);
-      if (mine) mine.toInvoice = (mine.toInvoice || 0) + 1;
-
-      const noteText = (noteEl ? noteEl.value : "").trim();
+    detail.querySelector(".register-attendance").addEventListener("click", async () => {
       const todayIso = new Date().toISOString().slice(0, 10);
+      const price = lessonPrices[a.instrument] || lessonPrices["Andet"] || 0;
+      const noteText = (noteEl ? noteEl.value : "").trim();
+
+      const { error: attErr } = await sb.from("attendance_log").upsert(
+        { student_id: a.student_id, recurring_assignment_id: a.id, lesson_date: todayIso, status: "done", price_at_time: price },
+        { onConflict: "student_id,lesson_date" }
+      );
+      if (attErr) { toast("Kunne ikke registrere fremmøde: " + attErr.message); return; }
+
       if (noteText) {
-        lesson.history = lesson.history || [];
-        lesson.history.push({ date: todayIso, summary: noteText, sentToStudent: true });
-        lesson.draftStudentNote = "";
+        const { error: noteErr } = await sb.from("lesson_notes").insert({ student_id: a.student_id, lesson_date: todayIso, summary: noteText, sent_to_student: true });
+        if (noteErr) toast("Fremmøde registreret, men noten kunne ikke gemmes: " + noteErr.message);
       }
 
-      detail.hidden = true;
+      await Promise.all([refreshAttendance(), refreshNotes()]);
       renderToday();
       renderActive();
-      toast(
-        noteText
-          ? "Fremmøde registreret, og noten er sendt til " + lesson.name + "."
-          : "Fremmøde registreret for " + lesson.name + " — tilføjet blandt lektioner der skal faktureres."
-      );
+      toast(noteText ? "Fremmøde registreret, og noten er sendt til " + a.student.name + "." : "Fremmøde registreret for " + a.student.name + " — tilføjet blandt lektioner der skal faktureres.");
     });
-    detail.querySelector(".add-video").addEventListener("click", () => {
-      lesson.videos = lesson.videos || [];
-      const n = lesson.videos.length + 1;
-      lesson.videos.push({ title: "Optagelse " + n + " — tilføjet nu", song: "I dag" });
-      detail.innerHTML = buildLessonDetailHtml(lesson);
-      wireLessonDetail(detail, lesson);
-      toast("Video tilføjet — læg gerne flere op, én ad gangen.");
-    });
-    detail.querySelector(".add-file").addEventListener("click", () => {
-      lesson.files = lesson.files || [];
-      const n = lesson.files.length + 1;
-      lesson.files.push({ title: "Dokument " + n + " — tilføjet nu" });
-      detail.innerHTML = buildLessonDetailHtml(lesson);
-      wireLessonDetail(detail, lesson);
-      toast("Fil tilføjet — læg gerne flere op, én ad gangen.");
-    });
+
+    async function uploadMedia(file, type) {
+      if (!file) return;
+      const path = a.student_id + "/" + crypto.randomUUID() + "-" + file.name;
+      const { error: upErr } = await sb.storage.from("lesson-media").upload(path, file);
+      if (upErr) { toast("Upload fejlede: " + upErr.message); return; }
+      const { error: insErr } = await sb.from("lesson_media").insert({ student_id: a.student_id, lesson_date: new Date().toISOString().slice(0, 10), type, title: file.name, storage_path: path });
+      if (insErr) { toast("Filen blev uploadet, men kunne ikke gemmes: " + insErr.message); return; }
+      await refreshMedia();
+      detail.innerHTML = buildLessonDetailHtml(a);
+      wireLessonDetail(detail, a);
+      toast((type === "video" ? "Video" : "Fil") + " tilføjet — læg gerne flere op, én ad gangen.");
+    }
+    const videoInput = detail.querySelector(".file-input-video");
+    const fileInput = detail.querySelector(".file-input-file");
+    detail.querySelector(".add-video").addEventListener("click", () => videoInput.click());
+    detail.querySelector(".add-file").addEventListener("click", () => fileInput.click());
+    videoInput.addEventListener("change", () => uploadMedia(videoInput.files[0], "video"));
+    fileInput.addEventListener("change", () => uploadMedia(fileInput.files[0], "file"));
   }
 
   // ───────────────────────── Init ─────────────────────────
-  renderPlanning();
-  renderToday();
-  renderTeachDays();
+  async function init() {
+    const { data } = await sb.auth.getSession();
+    if (data.session) { await afterLogin(data.session); }
+    else { showLoginGate(); }
+  }
+  init();
 </script>
