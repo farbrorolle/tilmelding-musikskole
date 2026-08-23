@@ -98,6 +98,7 @@
 
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: none; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; padding: 12px 22px; transition: transform 0.1s ease, background 0.15s ease, opacity 0.15s ease; }
   .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.6; cursor: default; }
   .btn-primary { background: var(--ink); color: var(--bg-raised); }
   .btn-primary:hover { background: var(--accent); color: var(--accent-ink); }
   .btn-ghost { background: transparent; color: var(--ink-soft); border: 1px solid var(--border); padding: 9px 16px; font-size: 13px; }
@@ -107,6 +108,7 @@
   .btn-text { background: none; border: none; cursor: pointer; color: var(--accent); font-size: 12.5px; font-weight: 600; padding: 4px 2px; }
   .btn-text:hover { text-decoration: underline; }
   .error-msg { color: var(--rose); font-size: 13px; margin-top: 12px; }
+  .info-msg { color: var(--sage); font-size: 13px; margin-top: 12px; }
 
   /* ───────────────────────── Log ind / opret bruger ───────────────────────── */
   .auth-toggle { display: inline-flex; background: var(--border-soft); border-radius: 999px; padding: 3px; gap: 2px; margin-bottom: 20px; }
@@ -149,7 +151,8 @@
   /* ───────────────────────── Materiale (video/fil-rækker) ───────────────────────── */
   .song-group + .song-group { margin-top: 18px; }
   .song-group .song-name { font-size: 12.5px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
-  .video-row { border: 1px solid var(--border-soft); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+  .video-row { border: 1px solid var(--border-soft); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .video-row:hover { border-color: var(--ink-faint); }
   .video-row + .video-row { margin-top: 8px; }
   .video-play { flex-shrink: 0; width: 32px; height: 32px; border-radius: 9px; background: var(--accent-wash); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 13px; }
   .video-info { flex: 1; min-width: 0; }
@@ -181,7 +184,7 @@
   }
 </style>
 
-<div class="skiss-badge">Klikbar skitse — samme Elevadgang og Min side du allerede har set i elevportal-skitsen, nu på sin egen adresse. Ingen rigtige logins, kalenderinvitationer, mails eller uploads her, og intet rører tilmeldingssiden på /tilmelding eller lærerens værktøjer på /laerer.</div>
+<div class="skiss-badge">Rigtig konto og rigtig database — når du opretter en bruger eller logger ind, er det din faktiske elevpost hos Olle. Kalenderinvitationer og fakturering kobles på i et senere trin.</div>
 
 <header class="site">
   <div class="wrap brand-row">
@@ -200,7 +203,7 @@
       <div class="hero">
         <span class="eyebrow">Piano · Guitar · Sang</span>
         <h1>En fast lektionstid, afstemt efter dit skema.</h1>
-        <p class="lede">Har du allerede en bruger? Log ind for at se din side. Ny her? Opret en bruger og skriv dig op på de tider der passer dig — Olle sætter en fast ugentlig tid til dig, og du får en kalenderinvitation, når skemaet er klart.</p>
+        <p class="lede">Har du allerede en bruger? Log ind for at se din side. Ny her? Opret en bruger og skriv dig op på de tider der passer dig — Olle sætter en fast ugentlig tid til dig, og du får besked, når skemaet er klart.</p>
       </div>
 
       <div id="signup-content"></div>
@@ -211,64 +214,68 @@
   <section class="view" id="view-portal">
     <div class="wrap">
       <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-        <div><h1>Emma S. — din side</h1><p>Din faste lektionstid og materiale fra Olle.</p></div>
+        <div><h1 id="portal-heading">Din side</h1><p>Din faste lektionstid og materiale fra Olle.</p></div>
         <button class="btn-text" id="portal-logout">Log ud</button>
       </div>
-      <div class="fixed-time-hero">
-        <p class="label">Din faste tid</p>
-        <p class="big" id="portal-fixed-time">Onsdage kl. 14:00</p>
-        <div class="next-lesson-note" id="portal-next-note">Næste gang er 26. aug. — allerede i din Google-kalender.</div>
-        <button class="btn-text" id="portal-subscribe-toggle" style="margin-top:12px;color:#fff;">📅 Abonnér på din kalender</button>
-        <div id="portal-subscribe-panel" class="subscribe-panel" hidden>
-          <p>Tilføj dette link i Google Kalender, Apple Kalender eller Outlook — det opdateres automatisk, hver gang Olle ændrer noget, uden at du behøver gøre det igen.</p>
-          <div class="subscribe-row">
-            <code id="portal-subscribe-link">webcal://olleslillemusikskole.dk/kalender/emma-s-9f21.ics</code>
-            <button class="btn btn-ghost btn-small" id="portal-subscribe-copy" style="border-color:#ffffff33;color:#fff;">Kopiér link</button>
-          </div>
+
+      <div id="portal-pending" class="panel" hidden>
+        <div class="section-label"><span>Du er skrevet op</span></div>
+        <p style="color:var(--ink-soft);font-size:14.5px;line-height:1.6;">Din bruger er oprettet, og dine ønsker er sendt videre til Olle. Så snart han har sat en fast ugentlig tid til dig, dukker den op her — ingen grund til at gøre andet lige nu.</p>
+      </div>
+
+      <div id="portal-main">
+        <div class="fixed-time-hero">
+          <p class="label">Din faste tid</p>
+          <p class="big" id="portal-fixed-time">—</p>
+          <div class="next-lesson-note" id="portal-next-note"></div>
         </div>
-      </div>
-      <div class="panel">
-        <div class="section-label"><span>Fra sidste lektion</span></div>
-        <div id="portal-last-note"></div>
-        <button class="btn-text" id="portal-notes-toggle" style="margin-top:12px;">Se tidligere beskeder</button>
-        <div class="row-list" id="portal-notes-history" hidden style="margin-top:8px;"></div>
-      </div>
-      <div class="panel">
-        <div class="section-label"><span>Materiale fra Olle</span></div>
-        <p class="section-sub">Senest tilføjet</p>
-        <div id="portal-recent-media"></div>
-        <button class="btn-text" id="portal-media-toggle" style="margin-top:14px;">Se alt materiale</button>
-        <div id="portal-videos" hidden style="margin-top:10px;"></div>
-      </div>
-      <div class="panel">
-        <div class="section-label"><span>Dine kommende lektioner</span></div>
-        <p class="section-sub">Alle dine bookede tider fremover — samme liste som ligger i din Google-kalender.</p>
-        <div class="row-list" id="portal-upcoming"></div>
-      </div>
-      <div class="panel">
-        <div class="section-label"><span>Gennemførte lektioner</span></div>
-        <p class="section-sub">Din lektionshistorik.</p>
-        <div class="row-list" id="portal-completed"></div>
-      </div>
-      <div class="panel">
-        <div class="section-label"><span>Mine fakturaer</span></div>
-        <p class="section-sub">Sendes i starten af hver måned, for forrige periodes lektioner.</p>
-        <div class="invoice-next-line"><span id="portal-invoice-total">0 kr.</span><span id="portal-invoice-note"></span></div>
-        <div class="row-list" id="portal-invoices"></div>
+        <div class="panel">
+          <div class="section-label"><span>Fra sidste lektion</span></div>
+          <div id="portal-last-note"></div>
+          <button class="btn-text" id="portal-notes-toggle" style="margin-top:12px;">Se tidligere beskeder</button>
+          <div class="row-list" id="portal-notes-history" hidden style="margin-top:8px;"></div>
+        </div>
+        <div class="panel">
+          <div class="section-label"><span>Materiale fra Olle</span></div>
+          <p class="section-sub">Senest tilføjet</p>
+          <div id="portal-recent-media"></div>
+          <button class="btn-text" id="portal-media-toggle" style="margin-top:14px;">Se alt materiale</button>
+          <div id="portal-videos" hidden style="margin-top:10px;"></div>
+        </div>
+        <div class="panel">
+          <div class="section-label"><span>Dine kommende lektioner</span></div>
+          <p class="section-sub">De næste ugers tider ud fra din faste plads.</p>
+          <div class="row-list" id="portal-upcoming"></div>
+        </div>
+        <div class="panel">
+          <div class="section-label"><span>Gennemførte lektioner</span></div>
+          <p class="section-sub">Din lektionshistorik.</p>
+          <div class="row-list" id="portal-completed"></div>
+        </div>
+        <div class="panel">
+          <div class="section-label"><span>Mine fakturaer</span></div>
+          <p class="section-sub">Sendes i starten af hver måned, for forrige periodes lektioner.</p>
+          <div class="invoice-next-line"><span id="portal-invoice-total">0 kr.</span><span id="portal-invoice-note"></span></div>
+          <div class="row-list" id="portal-invoices"></div>
+        </div>
       </div>
     </div>
   </section>
 </main>
 
-<footer class="site">Skitse til elevsiden · Elevadgang og Min side, samme datamodel som backend-koden på /tilmelding og /laerer.<br><span style="display:inline-block;margin-top:6px;">Kommentarer og ønsker til flow eller indhold modtages meget gerne, før den kobles til rigtig database, login og Google Kalender.</span></footer>
+<footer class="site">Elevside · Olles lille musikskole.<br><span style="display:inline-block;margin-top:6px;">Kommentarer og ønsker modtages meget gerne.</span></footer>
 <div id="toast-stack"></div>
 
-<script>
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const SUPABASE_URL = "https://oztzxrxfwvvccrqzhiry.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96dHp4cnhmd3Z2Y2NycXpoaXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNDc0NzYsImV4cCI6MjEwMjkyMzQ3Nn0.ar7EL8jIwYAhFzKIYyXwnANbRfy8iUOlP5Vo2C0rlmM";
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
   const WEEKDAYS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag"];
   const WEEKDAYS_PLURAL = ["Mandage", "Tirsdage", "Onsdage", "Torsdage", "Fredage"];
   const WEEKDAYS_SHORT = ["Man", "Tir", "Ons", "Tor", "Fre"];
-  let uid = 200;
-  const nextId = () => "id" + (uid++);
 
   function toast(msg) {
     const stack = document.getElementById("toast-stack");
@@ -283,9 +290,8 @@
     }, 3600);
   }
   function formatDate(iso) { const d = new Date(iso + "T00:00:00"); return d.toLocaleDateString("da-DK", { weekday: "short", day: "numeric", month: "short" }); }
-  // weekdayIdx: 0=Man..4=Fre. Returnerer `count` kommende ISO-datoer for den ugedag, fra næste uge.
   function nextOccurrenceDates(weekdayIdx, count) {
-    const targetDow = weekdayIdx + 1; // JS getDay(): 0=Søn..6=Lør, altså Man=1..Fre=5
+    const targetDow = weekdayIdx + 1;
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     let delta = (targetDow - d.getDay() + 7) % 7;
@@ -298,31 +304,18 @@
     }
     return dates;
   }
-  // Alle ISO-datoer for en ugedag (0=Man..4=Fre) fra `weeksBack` uger siden til `weeksForward` uger frem.
-  function datesForWeekday(weekdayIdx, weeksBack, weeksForward) {
-    const targetDow = weekdayIdx + 1;
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    const base = new Date(d);
-    base.setDate(base.getDate() + (targetDow - d.getDay()));
-    const dates = [];
-    for (let w = -weeksBack; w <= weeksForward; w++) {
-      const dt = new Date(base);
-      dt.setDate(dt.getDate() + w * 7);
-      dates.push(dt.toISOString().slice(0, 10));
-    }
-    return dates;
-  }
-  function classifyByDate(iso) {
-    const days = Math.round((new Date(iso + "T00:00:00") - new Date(new Date().toDateString())) / 86400000);
-    if (days >= 0) return "upcoming";
-    return -days > 7 ? "billed" : "tobill";
+  const UPCOMING_WINDOW = 8;
+
+  function friendlyAuthError(msg) {
+    if (!msg) return "Der skete en fejl. Prøv igen.";
+    if (/invalid login credentials/i.test(msg)) return "Forkert mailadresse eller adgangskode.";
+    if (/user already registered/i.test(msg)) return "Der findes allerede en bruger med den mailadresse — log ind i stedet.";
+    if (/password should be at least/i.test(msg)) return "Adgangskoden skal være mindst 6 tegn.";
+    if (/rate limit/i.test(msg)) return "For mange forsøg — vent lidt og prøv igen.";
+    return msg;
   }
 
   // ───────────────────────── Faner ─────────────────────────
-  // To helt adskilte sider i den rigtige version (elev.olleslillemusikskole.dk og
-  // lærerens egen adresse) — her på elevsidens egen route er der kun Elevadgang og Min side,
-  // ingen kobling til eller viden om lærerens værktøjer overhovedet.
   document.querySelectorAll(".tab-btn").forEach((btn) => btn.addEventListener("click", () => switchView(btn.dataset.tab)));
   function switchView(name) {
     ["signup", "portal"].forEach((v) => document.getElementById("view-" + v).classList.toggle("active", v === name));
@@ -335,49 +328,80 @@
     if (name === "portal") renderPortal();
   }
   function updateNav() {
-    document.getElementById("tab-btn-signup").hidden = state.elevAuthed;
-    document.getElementById("tab-btn-portal").hidden = !state.elevAuthed;
+    const authed = !!session;
+    document.getElementById("tab-btn-signup").hidden = authed;
+    document.getElementById("tab-btn-portal").hidden = !authed;
   }
 
   // ═══════════════════════ STATE ═══════════════════════
+  const SLOTS = [
+    { id: "s1", weekday: 0, start: "15:00", end: "16:00" },
+    { id: "s2", weekday: 2, start: "16:00", end: "17:00" },
+    { id: "s3", weekday: 2, start: "17:00", end: "18:00" },
+    { id: "s4", weekday: 3, start: "15:30", end: "16:30" },
+    { id: "s5", weekday: 4, start: "14:00", end: "15:00" },
+  ];
+
+  let session = null;
+  let student = null;
+  let assignment = null;
+  let lessonPrices = {};
+
   const state = {
-    slots: [
-      { id: "s1", weekday: 0, start: "15:00", end: "16:00" },
-      { id: "s2", weekday: 2, start: "16:00", end: "17:00" },
-      { id: "s3", weekday: 2, start: "17:00", end: "18:00" },
-      { id: "s4", weekday: 3, start: "15:30", end: "16:30" },
-      { id: "s5", weekday: 4, start: "14:00", end: "15:00" },
-    ],
     signupSelectedSlots: new Set(),
     signupDone: false,
-    // Klassisk elevadgang: "log ind" eller "opret bruger" er første side. Når elevAuthed er
-    // sand, viser navigationen kun "Min side" for eleven — ingen anden fane at fare vild i.
+    signupNeedsConfirm: false,
     authMode: "login",
-    elevAuthed: false,
-    // Holder på det brugeren allerede har skrevet, så det ikke forsvinder når formularen
-    // gentegnes (fx når man sætter kryds ved endnu en tid).
     signupDraft: { name: "", email: "", phone: "", instrument: "", message: "", password: "", password2: "" },
   };
 
-  function slotLabel(weekday, start, end) { return WEEKDAYS_SHORT[weekday] + " " + start.slice(0, 5) + "–" + end.slice(0, 5); }
+  async function loadElevData() {
+    const { data: prof, error: profErr } = await sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+    if (profErr || !prof) { student = null; assignment = null; return; }
+    if (prof.role !== "elev") { student = null; assignment = null; return; }
+    const { data: stu } = await sb.from("students").select("*").eq("id", prof.student_id).maybeSingle();
+    student = stu || null;
+    if (student) {
+      const { data: asg } = await sb.from("recurring_assignments").select("*").eq("student_id", student.id).order("created_at", { ascending: false }).limit(1);
+      assignment = (asg && asg[0]) || null;
+    } else {
+      assignment = null;
+    }
+    if (Object.keys(lessonPrices).length === 0) {
+      const { data: prices } = await sb.from("lesson_prices").select("*");
+      lessonPrices = Object.fromEntries((prices || []).map((p) => [p.instrument, p.price]));
+    }
+  }
 
   // ═══════════════════════ ELEVADGANG (log ind / opret bruger) ═══════════════════════
   function renderSignup() {
     const el = document.getElementById("signup-content");
 
+    if (state.signupNeedsConfirm) {
+      el.innerHTML =
+        '<div class="confirm-card"><div class="icon">✉</div>' +
+        "<h2>Tjek din mail</h2>" +
+        "<p>Vi har sendt dig en bekræftelseslink. Klik på linket i mailen, og log derefter ind herunder.</p>" +
+        '<button class="btn btn-ghost" style="margin-top:18px;border-color:#ffffff33;color:#fff;" id="signup-goto-login">Gå til log ind</button></div>';
+      document.getElementById("signup-goto-login").addEventListener("click", () => {
+        state.signupNeedsConfirm = false;
+        state.authMode = "login";
+        renderSignup();
+      });
+      return;
+    }
+
     if (state.signupDone) {
       el.innerHTML =
         '<div class="confirm-card"><div class="icon">✓</div>' +
         "<h2>Tak, din bruger er oprettet!</h2>" +
-        "<p>Olle sætter en fast ugentlig tid til dig ud fra dine ønsker. Du får en kalenderinvitation til hele sæsonens lektioner, så snart skemaet er klart — fra nu af logger du bare ind for at se din side.</p>" +
+        "<p>Olle sætter en fast ugentlig tid til dig ud fra dine ønsker og dit skema, og vender tilbage så snart den er klar. Fra nu af logger du bare ind for at se din side.</p>" +
         '<button class="btn btn-ghost" style="margin-top:18px;border-color:#ffffff33;color:#fff;" id="signup-goto-portal">Gå til Min side →</button></div>';
       document.getElementById("signup-goto-portal").addEventListener("click", () => {
         state.signupDone = false;
         state.authMode = "login";
-        state.elevAuthed = true;
         updateNav();
         switchView("portal");
-        toast("Velkommen! Du er nu logget ind.");
       });
       return;
     }
@@ -402,23 +426,28 @@
 
       document.querySelectorAll(".authmode-btn").forEach((btn) => btn.addEventListener("click", () => { state.authMode = btn.dataset.mode; renderSignup(); }));
       document.getElementById("go-to-signup").addEventListener("click", () => { state.authMode = "signup"; renderSignup(); });
-      document.getElementById("login-form").addEventListener("submit", (e) => {
+      document.getElementById("login-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const email = document.getElementById("l-email").value.trim();
         const password = document.getElementById("l-password").value;
         const errEl = document.getElementById("login-error");
         errEl.innerHTML = "";
-        if (!email || !password) { errEl.innerHTML = '<p class="error-msg">Udfyld både mail og adgangskode.</p>'; return; }
-        state.elevAuthed = true;
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        submitBtn.disabled = false;
+        if (error) { errEl.innerHTML = '<p class="error-msg">' + friendlyAuthError(error.message) + "</p>"; return; }
+        session = data.session;
+        await loadElevData();
         updateNav();
         switchView("portal");
-        toast("Logget ind som Emma S.");
+        toast("Logget ind.");
       });
       return;
     }
 
-    // authMode === "signup": opret bruger, mens man skriver sine ønsker op
-    const dayBlocks = WEEKDAYS.map((_, wd) => state.slots.filter((s) => s.weekday === wd)).filter((l) => l.length);
+    // authMode === "signup"
+    const dayBlocks = WEEKDAYS.map((_, wd) => SLOTS.filter((s) => s.weekday === wd)).filter((l) => l.length);
 
     el.innerHTML =
       modeToggle +
@@ -432,7 +461,7 @@
       '<label class="field"><span>Telefonnummer</span><input required type="tel" id="f-phone" placeholder="+45 20 …" value="' + state.signupDraft.phone + '"></label>' +
       '<label class="field"><span>Instrument / ønsker</span><input required id="f-instrument" placeholder="F.eks. introduktion til musik, lidt sang, lidt klaver — hvad som helst" value="' + state.signupDraft.instrument + '"></label>' +
       '<label class="field"><span>Besked (valgfri)</span><textarea id="f-message" placeholder="Erfaring, ønsker, andet Olle bør vide">' + state.signupDraft.message + "</textarea></label>" +
-      '<label class="field"><span>Adgangskode</span><input required type="password" id="f-password" placeholder="Vælg en adgangskode" value="' + state.signupDraft.password + '"></label>' +
+      '<label class="field"><span>Adgangskode</span><input required type="password" id="f-password" placeholder="Vælg en adgangskode (mindst 6 tegn)" value="' + state.signupDraft.password + '"></label>' +
       '<label class="field"><span>Bekræft adgangskode</span><input required type="password" id="f-password2" placeholder="Gentag adgangskoden" value="' + state.signupDraft.password2 + '"></label>' +
       '<div id="signup-error"></div>' +
       '<button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;">Opret bruger &amp; skriv mig op</button></form>' +
@@ -470,11 +499,13 @@
       document.getElementById(fieldId).addEventListener("input", (e) => { state.signupDraft[key] = e.target.value; });
     });
 
-    document.getElementById("signup-form").addEventListener("submit", (e) => {
+    document.getElementById("signup-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = document.getElementById("f-name").value.trim();
       const email = document.getElementById("f-email").value.trim();
       const phone = document.getElementById("f-phone").value.trim();
+      const instrument = document.getElementById("f-instrument").value.trim();
+      const message = document.getElementById("f-message").value.trim();
       const password = document.getElementById("f-password").value;
       const password2 = document.getElementById("f-password2").value;
       const errEl = document.getElementById("signup-error");
@@ -484,197 +515,187 @@
       if (!password || password.length < 6) { errEl.innerHTML = '<p class="error-msg">Adgangskoden skal være mindst 6 tegn.</p>'; return; }
       if (password !== password2) { errEl.innerHTML = '<p class="error-msg">Adgangskoderne er ikke ens.</p>'; return; }
 
-      state.signupDone = true;
+      const tidspunkter = Array.from(state.signupSelectedSlots).map((id) => {
+        const slot = SLOTS.find((s) => s.id === id);
+        return WEEKDAYS[slot.weekday] + " " + slot.start.slice(0, 5) + "–" + slot.end.slice(0, 5);
+      });
+
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      const { data, error } = await sb.auth.signUp({
+        email, password,
+        options: { data: { name, phone, instrument_onske: instrument, message, tidspunkter } },
+      });
+      submitBtn.disabled = false;
+      if (error) { errEl.innerHTML = '<p class="error-msg">' + friendlyAuthError(error.message) + "</p>"; return; }
+
       state.signupSelectedSlots.clear();
       state.signupDraft = { name: "", email: "", phone: "", instrument: "", message: "", password: "", password2: "" };
+
+      if (data.session) {
+        session = data.session;
+        await loadElevData();
+        state.signupDone = true;
+      } else {
+        state.signupNeedsConfirm = true;
+      }
       renderSignup();
     });
   }
 
   // ═══════════════════════ MIN SIDE ═══════════════════════
-  // Pris per instrument (kr./lektion) — bruges kun til at vise et estimeret fakturabeløb.
-  const LESSON_PRICE = { Piano: 450, Guitar: 450, Sang: 480, Andet: 450 };
-  function formatKr(amount) { return amount.toLocaleString("da-DK") + " kr."; }
+  async function renderPortal() {
+    document.getElementById("portal-heading").textContent = student ? student.name.split(" ")[0] + " — din side" : "Din side";
 
-  // Demo-elevens egen faste tid — i den rigtige version hentet fra hendes egen konto,
-  // ikke fra en delt liste med andre elever (elevsiden kender kun sig selv).
-  const myAssignment = { weekday: 2, start: "14:00", end: "14:45", instrument: "Piano" };
+    if (!assignment) {
+      document.getElementById("portal-pending").hidden = false;
+      document.getElementById("portal-main").hidden = true;
+      return;
+    }
+    document.getElementById("portal-pending").hidden = true;
+    document.getElementById("portal-main").hidden = false;
 
-  // Korte noter Olle har skrevet efter tidligere lektioner — nyeste fremhævet på Min side,
-  // resten bag "Se tidligere beskeder".
-  const myNotes = [
-    { date: "2026-08-12", summary: "Gennemgik tonleiter C-dur, startede på Für Elise takt 1–8. Øv gerne venstre hånd alene derhjemme." },
-    { date: "2026-08-05", summary: "Repetition af sommerens stykker, snakkede om den nye sæson." },
-    { date: "2026-06-24", summary: "Sidste lektion før sommerpausen — opsummerede årets fremgang." },
-  ];
+    document.getElementById("portal-fixed-time").textContent = WEEKDAYS_PLURAL[assignment.weekday] + " kl. " + assignment.start_time.slice(0, 5);
+    const firstUpcoming = nextOccurrenceDates(assignment.weekday, 1)[0];
+    document.getElementById("portal-next-note").innerHTML = "Næste gang er <b>" + formatDate(firstUpcoming) + "</b>.";
 
-  // daysAgo bruges til at afgøre hvad der er "senest tilføjet" — array-rækkefølgen alene er
-  // ikke nok, fordi nye elementer i den rigtige version føjes til sidst uanset alder.
-  const portalVideos = [
-    { title: "Tonleiter C-dur — lektie", song: "Für Elise", ago: "2 dage siden", daysAgo: 2 },
-    { title: "Für Elise, første del", song: "Für Elise", ago: "16 dage siden", daysAgo: 16 },
-    { title: "Julekoncert — optagelse", song: "Andet", ago: "3 måneder siden", daysAgo: 90 },
-  ];
-  const UPCOMING_WINDOW = 8; // hvor mange kommende uger der vises — serien er åben, intet klippekort begrænser den
+    const [{ data: cancelled }, { data: notesRaw }, { data: mediaRaw }, { data: attendance }, { data: invoicesRaw }] = await Promise.all([
+      sb.from("cancelled_lesson_dates").select("lesson_date"),
+      sb.from("lesson_notes").select("*").eq("student_id", student.id).order("lesson_date", { ascending: false }),
+      sb.from("lesson_media").select("*").eq("student_id", student.id).order("created_at", { ascending: false }),
+      sb.from("attendance_log").select("*").eq("student_id", student.id),
+      sb.from("invoices").select("*, invoice_lines(*)").eq("student_id", student.id).order("created_at", { ascending: false }),
+    ]);
+    const cancelledSet = new Set((cancelled || []).map((c) => c.lesson_date));
+    const notes = notesRaw || [];
+    const media = mediaRaw || [];
+    const invoices = invoicesRaw || [];
 
-  // Egne gennemførte lektioner, udledt af egen ugedag i stedet for en delt liste på tværs af
-  // elever (den findes kun på lærerens side) — samme klassificering (skal faktureres / faktureret).
-  function buildMyCompleted() {
-    const todayIso = new Date().toISOString().slice(0, 10);
-    return datesForWeekday(myAssignment.weekday, 5, 0)
-      .filter((iso) => iso !== todayIso)
-      .map((iso) => ({ date: iso, status: classifyByDate(iso) }))
-      .filter((e) => e.status === "tobill" || e.status === "billed")
-      .sort((a, b) => b.date.localeCompare(a.date));
-  }
-
-  // Egne fakturaer — i den rigtige version hentet fra egen konto/e-conomic-kunde.
-  const myInvoices = [
-    { period: "Juli 2026", lessons: 4, amount: 4 * LESSON_PRICE.Piano, status: "paid" },
-    { period: "Juni 2026", lessons: 3, amount: 3 * LESSON_PRICE.Piano, status: "sent" },
-  ];
-  const INVOICE_STATUS_LABEL = {
-    sent: '<span class="tag tag-sent">Sendt — afventer betaling</span>',
-    paid: '<span class="tag tag-done">Betalt</span>',
-  };
-
-  function renderPortal() {
-    document.getElementById("portal-fixed-time").textContent = WEEKDAYS_PLURAL[myAssignment.weekday] + " kl. " + myAssignment.start.slice(0, 5);
-    const firstUpcoming = nextOccurrenceDates(myAssignment.weekday, 1)[0];
-    document.getElementById("portal-next-note").innerHTML = "Næste gang er <b>" + formatDate(firstUpcoming) + "</b> — allerede i din Google-kalender.";
-
-    const upcoming = document.getElementById("portal-upcoming");
-    upcoming.innerHTML = "";
-    nextOccurrenceDates(myAssignment.weekday, UPCOMING_WINDOW).forEach((iso, i) => {
-      const row = document.createElement("div");
-      row.className = "divider-row";
-      row.innerHTML =
-        '<span class="mono-date">' + formatDate(iso) + "</span>" +
-        '<span class="mono-time" style="width:auto;">' + myAssignment.start.slice(0, 5) + "</span>" +
-        '<span class="row-title"><span class="name">' + myAssignment.instrument + "lektion</span></span>" +
-        (i === 0 ? '<span class="tag tag-pending">Næste</span>' : "");
-      upcoming.appendChild(row);
-    });
-
-    const completed = document.getElementById("portal-completed");
-    completed.innerHTML = "";
-    const myCompleted = buildMyCompleted();
-    if (myCompleted.length === 0) {
-      completed.innerHTML = '<p class="empty-state">Ingen gennemførte lektioner endnu.</p>';
-    } else {
-      myCompleted.forEach((e) => {
+    // ── Kommende lektioner ──
+    const upcomingEl = document.getElementById("portal-upcoming");
+    upcomingEl.innerHTML = "";
+    let firstShown = false;
+    nextOccurrenceDates(assignment.weekday, UPCOMING_WINDOW + 3)
+      .filter((iso) => !cancelledSet.has(iso))
+      .slice(0, UPCOMING_WINDOW)
+      .forEach((iso) => {
         const row = document.createElement("div");
         row.className = "divider-row";
         row.innerHTML =
-          '<span class="mono-date">' + formatDate(e.date) + "</span>" +
-          '<span class="mono-time" style="width:auto;">' + myAssignment.start.slice(0, 5) + "</span>" +
-          '<span class="row-title"><span class="name">' + myAssignment.instrument + "lektion</span></span>" +
+          '<span class="mono-date">' + formatDate(iso) + "</span>" +
+          '<span class="mono-time" style="width:auto;">' + assignment.start_time.slice(0, 5) + "</span>" +
+          '<span class="row-title"><span class="name">' + (assignment.instrument || student.instrument_onske || "Lektion") + "</span></span>" +
+          (!firstShown ? '<span class="tag tag-pending">Næste</span>' : "");
+        firstShown = true;
+        upcomingEl.appendChild(row);
+      });
+
+    // ── Gennemførte lektioner ──
+    const completedEl = document.getElementById("portal-completed");
+    completedEl.innerHTML = "";
+    const doneEntries = attendance.filter((a) => a.status === "done").sort((a, b) => b.lesson_date.localeCompare(a.lesson_date));
+    if (doneEntries.length === 0) {
+      completedEl.innerHTML = '<p class="empty-state">Ingen gennemførte lektioner endnu.</p>';
+    } else {
+      doneEntries.forEach((e) => {
+        const row = document.createElement("div");
+        row.className = "divider-row";
+        row.innerHTML =
+          '<span class="mono-date">' + formatDate(e.lesson_date) + "</span>" +
+          '<span class="mono-time" style="width:auto;">' + assignment.start_time.slice(0, 5) + "</span>" +
+          '<span class="row-title"><span class="name">' + (assignment.instrument || student.instrument_onske || "Lektion") + "</span></span>" +
           '<span class="tag tag-done">Gennemført</span>';
-        completed.appendChild(row);
+        completedEl.appendChild(row);
       });
     }
 
-    // Fakturering fylder bevidst lidt her — kun en enkelt linje, resten af opmærksomheden
-    // går til sidste lektion og materiale (se nedenfor).
-    const myUnbilled = myCompleted.filter((e) => e.status === "tobill");
-    const invoiceTotal = myUnbilled.length * (LESSON_PRICE[myAssignment.instrument] || LESSON_PRICE.Piano);
-    document.getElementById("portal-invoice-total").textContent = formatKr(invoiceTotal);
+    // ── Fakturering — kort statuslinje ──
+    const price = lessonPrices[assignment.instrument] || lessonPrices["Andet"] || 0;
+    const unbilled = doneEntries.filter((e) => !e.invoice_id);
+    document.getElementById("portal-invoice-total").textContent = (unbilled.length * price).toLocaleString("da-DK") + " kr.";
     document.getElementById("portal-invoice-note").textContent =
-      myUnbilled.length === 0
-        ? "Ingen ufakturerede lektioner endnu denne periode."
-        : myUnbilled.length + " lektion" + (myUnbilled.length === 1 ? "" : "er") + " indtil videre denne periode — sendes i starten af næste måned.";
+      unbilled.length === 0 ? "Ingen ufakturerede lektioner endnu denne periode." : unbilled.length + " lektion" + (unbilled.length === 1 ? "" : "er") + " indtil videre denne periode.";
 
-    const myInvList = document.getElementById("portal-invoices");
-    myInvList.innerHTML = "";
-    if (myInvoices.length === 0) {
-      myInvList.innerHTML = '<p class="empty-state">Ingen fakturaer endnu.</p>';
+    const invEl = document.getElementById("portal-invoices");
+    invEl.innerHTML = "";
+    if (invoices.length === 0) {
+      invEl.innerHTML = '<p class="empty-state">Ingen fakturaer endnu.</p>';
     } else {
-      myInvoices.forEach((inv) => {
+      const statusLabel = { draft: '<span class="tag tag-pending">Kladde</span>', sent: '<span class="tag tag-sent">Sendt — afventer betaling</span>', paid: '<span class="tag tag-done">Betalt</span>' };
+      invoices.forEach((inv) => {
         const row = document.createElement("div");
         row.className = "invoice-row";
         row.innerHTML =
-          '<span class="iname">' + inv.period + '<span class="iperiod">' + inv.lessons + " lektioner</span></span>" +
-          '<span class="iamount">' + formatKr(inv.amount) + "</span>" +
-          INVOICE_STATUS_LABEL[inv.status];
-        myInvList.appendChild(row);
+          '<span class="iname">' + inv.period_start + " – " + inv.period_end + '<span class="iperiod">' + (inv.invoice_lines || []).length + " linjer</span></span>" +
+          '<span class="iamount">' + Number(inv.total_amount).toLocaleString("da-DK") + " kr.</span>" +
+          (statusLabel[inv.status] || "");
+        invEl.appendChild(row);
       });
     }
 
-    // ── Fra sidste lektion: den nyeste besked fremhævet, resten bag et "se tidligere"-toggle ──
-    const sortedNotes = myNotes.slice().sort((a, b) => b.date.localeCompare(a.date));
+    // ── Fra sidste lektion ──
     const lastNoteEl = document.getElementById("portal-last-note");
     const notesToggle = document.getElementById("portal-notes-toggle");
     const notesHistory = document.getElementById("portal-notes-history");
-    if (sortedNotes.length === 0) {
+    if (notes.length === 0) {
       lastNoteEl.innerHTML = '<p class="empty-state">Ingen beskeder endnu.</p>';
       notesToggle.hidden = true;
       notesHistory.hidden = true;
     } else {
-      lastNoteEl.innerHTML =
-        '<div class="last-note-card"><p class="ln-date">' + formatDate(sortedNotes[0].date) + '</p><p class="ln-text">' + sortedNotes[0].summary + "</p></div>";
-      const older = sortedNotes.slice(1);
+      lastNoteEl.innerHTML = '<div class="last-note-card"><p class="ln-date">' + formatDate(notes[0].lesson_date) + '</p><p class="ln-text">' + notes[0].summary + "</p></div>";
+      const older = notes.slice(1);
       notesToggle.hidden = older.length === 0;
       notesToggle.textContent = "Se tidligere beskeder (" + older.length + ")";
       notesHistory.innerHTML = older
-        .map((n) => '<div class="divider-row"><span class="mono-date">' + formatDate(n.date) + '</span><span class="row-title" style="font-size:13.5px;">' + n.summary + "</span></div>")
+        .map((n) => '<div class="divider-row"><span class="mono-date">' + formatDate(n.lesson_date) + '</span><span class="row-title" style="font-size:13.5px;">' + n.summary + "</span></div>")
         .join("");
     }
     notesToggle.onclick = () => { notesHistory.hidden = !notesHistory.hidden; };
 
-    // ── Materiale fra Olle: de(t) 2 seneste fremhævet, alt andet bag et "se alt"-toggle ──
-    const sortedMedia = portalVideos.slice().sort((a, b) => (a.daysAgo || 0) - (b.daysAgo || 0));
+    // ── Materiale fra Olle ──
     const recentEl = document.getElementById("portal-recent-media");
     const mediaToggle = document.getElementById("portal-media-toggle");
     const allMediaEl = document.getElementById("portal-videos");
-    if (sortedMedia.length === 0) {
+    async function mediaRowHtml(v) {
+      const { data: signed } = await sb.storage.from("lesson-media").createSignedUrl(v.storage_path, 3600);
+      const url = signed ? signed.signedUrl : "#";
+      const ago = v.created_at ? formatDate(v.created_at.slice(0, 10)) : "";
+      return '<div class="video-row" onclick="window.open(\'' + url + '\',\'_blank\')"><span class="video-play">' + (v.type === "file" ? "📄" : "▶") + '</span><span class="video-info"><span class="vtitle">' + v.title + '</span><span class="vmeta">' + ago + "</span></span></div>";
+    }
+    if (media.length === 0) {
       recentEl.innerHTML = '<p class="empty-state">Ingen videoer eller filer endnu.</p>';
       mediaToggle.hidden = true;
       allMediaEl.hidden = true;
     } else {
-      recentEl.innerHTML = sortedMedia
-        .slice(0, 2)
-        .map((v) => '<div class="video-row"><span class="video-play">' + (v.type === "file" ? "📄" : "▶") + '</span><span class="video-info"><span class="vtitle">' + v.title + '</span><span class="vmeta">' + v.ago + "</span></span></div>")
-        .join("");
+      recentEl.innerHTML = (await Promise.all(media.slice(0, 2).map(mediaRowHtml))).join("");
       mediaToggle.hidden = false;
-      mediaToggle.textContent = "Se alt materiale (" + sortedMedia.length + ")";
-
-      const groups = {};
-      portalVideos.forEach((v) => (groups[v.song] = groups[v.song] || []).push(v));
-      const names = Object.keys(groups).filter((n) => n !== "Andet").sort();
-      if (groups["Andet"]) names.push("Andet");
-      allMediaEl.innerHTML = names
-        .map((song) =>
-          '<div class="song-group"><p class="song-name">' + song + "</p>" +
-          groups[song].map((v) => '<div class="video-row"><span class="video-play">' + (v.type === "file" ? "📄" : "▶") + '</span><span class="video-info"><span class="vtitle">' + v.title + '</span><span class="vmeta">' + v.ago + "</span></span></div>").join("") +
-          "</div>"
-        )
-        .join("");
+      mediaToggle.textContent = "Se alt materiale (" + media.length + ")";
+      allMediaEl.innerHTML = (await Promise.all(media.map(mediaRowHtml))).join("");
     }
     mediaToggle.onclick = () => { allMediaEl.hidden = !allMediaEl.hidden; };
   }
 
-  document.getElementById("portal-logout").addEventListener("click", () => {
-    state.elevAuthed = false;
-    state.authMode = "login";
+  document.getElementById("portal-logout").addEventListener("click", async () => {
+    await sb.auth.signOut();
+    session = null; student = null; assignment = null;
     updateNav();
+    state.authMode = "login";
     switchView("signup");
     toast("Logget ud.");
   });
 
-  // Kalenderabonnement — et alternativ/supplement til den automatiske Google-invitation,
-  // til elever der bruger Apple Kalender, Outlook eller andet end Google selv.
-  document.getElementById("portal-subscribe-toggle").addEventListener("click", () => {
-    const panel = document.getElementById("portal-subscribe-panel");
-    panel.hidden = !panel.hidden;
-  });
-  document.getElementById("portal-subscribe-copy").addEventListener("click", async () => {
-    const link = document.getElementById("portal-subscribe-link").textContent;
-    try { await navigator.clipboard.writeText(link); } catch (e) { /* skitse uden rigtig udklipsholder-adgang her */ }
-    toast("Kalenderlink kopieret.");
-  });
-
   // ───────────────────────── Init ─────────────────────────
-  renderSignup();
-  renderPortal();
-  updateNav();
+  async function init() {
+    const { data } = await sb.auth.getSession();
+    session = data.session;
+    if (session) {
+      await loadElevData();
+      updateNav();
+      switchView("portal");
+    } else {
+      updateNav();
+      renderSignup();
+    }
+  }
+  init();
 </script>
