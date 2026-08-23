@@ -218,6 +218,10 @@
         <button class="btn-text" id="portal-logout">Log ud</button>
       </div>
 
+      <!-- Vises kun når kontoen er koblet til mere end én elev (fx søskende,
+           der deler login) — se renderStudentSwitcher() i scriptet. -->
+      <div class="tabs" role="tablist" aria-label="Skift elev" id="student-switcher" hidden style="margin-bottom:18px;"></div>
+
       <div id="portal-pending" class="panel" hidden>
         <div class="section-label"><span>Du er skrevet op</span></div>
         <p style="color:var(--ink-soft);font-size:14.5px;line-height:1.6;">Din bruger er oprettet, og dine ønsker er sendt videre til Olle. Så snart han har sat en fast ugentlig tid til dig, dukker den op her — ingen grund til at gøre andet lige nu.</p>
@@ -368,6 +372,9 @@
   let student = null;
   let assignment = null;
   let lessonPrices = {};
+  // Elever koblet til denne konto — normalt kun én, men søskende kan dele
+  // login (se account_students i databasen), så det er en liste.
+  let linkedStudents = [];
 
   const state = {
     signupSelectedSlots: new Set(),
@@ -376,13 +383,29 @@
     authMode: "login",
     signupDraft: { name: "", email: "", phone: "", instrument: "", message: "", password: "", password2: "" },
     passwordRecovery: false,
+    selectedStudentId: null,
   };
 
   async function loadElevData() {
     const { data: prof, error: profErr } = await sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
-    if (profErr || !prof) { student = null; assignment = null; return; }
-    if (prof.role !== "elev") { student = null; assignment = null; return; }
-    const { data: stu } = await sb.from("students").select("*").eq("id", prof.student_id).maybeSingle();
+    if (profErr || !prof) { student = null; assignment = null; linkedStudents = []; return; }
+    if (prof.role !== "elev") { student = null; assignment = null; linkedStudents = []; return; }
+
+    // OBS (2026-08-23): et login kan nu være koblet til flere elever
+    // (fx to søskende der bruger samme mailadresse) — se migrationen
+    // "multi_student_accounts". Falder tilbage til profiles.student_id hvis
+    // koblingen af en eller anden grund mangler (bør ikke ske for nye konti).
+    const { data: links } = await sb.from("account_students").select("students(id, name)");
+    linkedStudents = (links || []).map((l) => l.students).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, "da"));
+    if (linkedStudents.length === 0 && prof.student_id) {
+      const { data: fallback } = await sb.from("students").select("id, name").eq("id", prof.student_id).maybeSingle();
+      if (fallback) linkedStudents = [fallback];
+    }
+    if (!state.selectedStudentId || !linkedStudents.some((s) => s.id === state.selectedStudentId)) {
+      state.selectedStudentId = linkedStudents[0] ? linkedStudents[0].id : prof.student_id || null;
+    }
+
+    const { data: stu } = await sb.from("students").select("*").eq("id", state.selectedStudentId).maybeSingle();
     student = stu || null;
     if (student) {
       const { data: asg } = await sb.from("recurring_assignments").select("*").eq("student_id", student.id).order("created_at", { ascending: false }).limit(1);
@@ -394,6 +417,25 @@
       const { data: prices } = await sb.from("lesson_prices").select("*");
       lessonPrices = Object.fromEntries((prices || []).map((p) => [p.instrument, p.price]));
     }
+  }
+
+  // Viser en lille "skift elev"-fane, når kontoen har mere end ét linket barn.
+  function renderStudentSwitcher() {
+    const wrap = document.getElementById("student-switcher");
+    if (!wrap) return;
+    if (linkedStudents.length <= 1) { wrap.hidden = true; wrap.innerHTML = ""; return; }
+    wrap.hidden = false;
+    wrap.innerHTML = linkedStudents
+      .map((s) => '<button type="button" class="tab-btn' + (s.id === state.selectedStudentId ? " active" : "") + '" data-id="' + s.id + '">' + s.name.split(" ")[0] + "</button>")
+      .join("");
+    wrap.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (btn.dataset.id === state.selectedStudentId) return;
+        state.selectedStudentId = btn.dataset.id;
+        await loadElevData();
+        await renderPortal();
+      });
+    });
   }
 
   // ═══════════════════════ ELEVADGANG (log ind / opret bruger) ═══════════════════════
@@ -600,6 +642,7 @@
 
   // ═══════════════════════ MIN SIDE ═══════════════════════
   async function renderPortal() {
+    renderStudentSwitcher();
     document.getElementById("portal-heading").textContent = student ? student.name.split(" ")[0] + " — din side" : "Din side";
 
     if (!assignment) {
