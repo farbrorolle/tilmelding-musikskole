@@ -502,6 +502,7 @@
   let cancelledDates = [];  // cancelled_lesson_dates
   let extraDays = [];       // extra_teaching_days
   let lessonPrices = {};
+  let elevProfiles = [];    // profiles med role='elev' (student_id, invited_at) — bruges til kontostatus
 
   const state = {
     draftAssignments: [],
@@ -513,7 +514,7 @@
   function studentById(id) { return students.find((s) => s.id === id); }
 
   async function loadAllData() {
-    const [{ data: wl }, { data: stu }, { data: asg }, { data: att }, { data: notes }, { data: media }, { data: cancelled }, { data: extra }, { data: prices }] = await Promise.all([
+    const [{ data: wl }, { data: stu }, { data: asg }, { data: att }, { data: notes }, { data: media }, { data: cancelled }, { data: extra }, { data: prices }, { data: eprof }] = await Promise.all([
       sb.from("waitlist_signups").select("*").eq("status", "pending").order("created_at", { ascending: true }),
       sb.from("students").select("*"),
       sb.from("recurring_assignments").select("*").eq("status", "published"),
@@ -523,6 +524,7 @@
       sb.from("cancelled_lesson_dates").select("*"),
       sb.from("extra_teaching_days").select("*"),
       sb.from("lesson_prices").select("*"),
+      sb.from("profiles").select("student_id, invited_at").eq("role", "elev"),
     ]);
     waitlist = wl || [];
     students = stu || [];
@@ -533,7 +535,13 @@
     cancelledDates = cancelled || [];
     extraDays = extra || [];
     lessonPrices = Object.fromEntries((prices || []).map((p) => [p.instrument, p.price]));
+    elevProfiles = eprof || [];
   }
+  async function refreshElevProfiles() {
+    const { data } = await sb.from("profiles").select("student_id, invited_at").eq("role", "elev");
+    elevProfiles = data || [];
+  }
+  function profileForStudent(studentId) { return elevProfiles.find((p) => p.student_id === studentId); }
   async function refreshAssignmentsAndStudents() {
     const [{ data: stu }, { data: asg }] = await Promise.all([
       sb.from("students").select("*"),
@@ -793,9 +801,78 @@
         '<span class="row-title"><span class="name">' + a.student.name + "</span>" +
         '<span class="tag tag-instr">' + (a.instrument || "") + "</span>" +
         '<span class="tag tag-recurring">' + slotLabel(a.weekday, a.start_time, a.end_time) + " hver uge</span>" +
-        (toBill > 0 ? '<span class="tag tag-tobill">' + toBill + " til fakturering</span>" : "") + "</span>";
+        (toBill > 0 ? '<span class="tag tag-tobill">' + toBill + " til fakturering</span>" : "") + "</span>" +
+        '<span class="account-ctrl" style="white-space:nowrap;"></span>';
+      wireAccountCtrl(row.querySelector(".account-ctrl"), a.student);
       list.appendChild(row);
     });
+  }
+
+  // ═══════════════════════ ELEVKONTO — opret + send invitation ═══════════════════════
+  // Læreren kan oprette en dvale-konto (uden kodeord, uden mail) for en elev ud fra
+  // deres mailadresse, og først senere — når han selv vælger det — sende en mail med
+  // et link hvor eleven selv vælger sit kodeord. To separate Netlify Functions
+  // (/api/create-student-account, /api/send-account-invite) håndterer dette
+  // server-side med service_role-nøglen; klienten sender kun lærerens session-token
+  // med, som funktionerne bruger til at bekræfte at det rent faktisk er læreren.
+  function wireAccountCtrl(ctrl, student) {
+    const prof = profileForStudent(student.id);
+    if (!prof) {
+      ctrl.innerHTML = '<button class="btn-text create-account-btn">Opret konto</button>';
+      ctrl.querySelector(".create-account-btn").addEventListener("click", () => createStudentAccount(student, ctrl));
+    } else if (!prof.invited_at) {
+      ctrl.innerHTML = '<button class="btn-text send-invite-btn">Send invitation</button>';
+      ctrl.querySelector(".send-invite-btn").addEventListener("click", () => sendAccountInvite(student, ctrl));
+    } else {
+      ctrl.innerHTML =
+        '<span style="font-size:11.5px;color:var(--ink-faint);">Invitation sendt ' + formatDate(prof.invited_at.slice(0, 10)) + "</span> " +
+        '<button class="btn-text send-invite-btn">Send igen</button>';
+      ctrl.querySelector(".send-invite-btn").addEventListener("click", () => sendAccountInvite(student, ctrl));
+    }
+  }
+
+  async function createStudentAccount(student, ctrl) {
+    ctrl.innerHTML = '<span style="font-size:11.5px;color:var(--ink-faint);">Opretter…</span>';
+    let data = null;
+    try {
+      const res = await fetch("/api/create-student-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ email: student.email, name: student.name, phone: student.phone, instrument: student.instrument_onske }),
+      });
+      data = await res.json();
+    } catch (err) {
+      toast("Kunne ikke oprette konto — prøv igen.");
+    }
+    if (data && data.ok) {
+      toast(data.already_existed ? (student.name + " har allerede en konto.") : ("Konto oprettet for " + student.name + " — ingen mail sendt endnu."));
+    } else if (data) {
+      toast("Kunne ikke oprette konto: " + (data.error || "ukendt fejl"));
+    }
+    await refreshElevProfiles();
+    wireAccountCtrl(ctrl, student);
+  }
+
+  async function sendAccountInvite(student, ctrl) {
+    ctrl.innerHTML = '<span style="font-size:11.5px;color:var(--ink-faint);">Sender…</span>';
+    let data = null;
+    try {
+      const res = await fetch("/api/send-account-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ email: student.email, name: student.name, student_id: student.id }),
+      });
+      data = await res.json();
+    } catch (err) {
+      toast("Kunne ikke sende invitation — prøv igen.");
+    }
+    if (data && data.ok) {
+      toast("Invitation sendt til " + student.name + ".");
+    } else if (data) {
+      toast("Kunne ikke sende invitation: " + (data.error || "ukendt fejl"));
+    }
+    await refreshElevProfiles();
+    wireAccountCtrl(ctrl, student);
   }
 
   const STATUS_TAG = {
