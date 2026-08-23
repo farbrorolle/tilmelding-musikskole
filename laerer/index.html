@@ -263,16 +263,38 @@
   <div class="wrap brand-row">
     <div class="wordmark"><span class="mark">♪</span><span class="name">Olles lille musikskole — lærer</span></div>
     <div class="tabs" role="tablist" aria-label="Vis side">
-      <button class="tab-btn active" data-tab="planning" role="tab" aria-selected="true" id="tab-btn-planning">Planlægning</button>
-      <button class="tab-btn" data-tab="today" role="tab" aria-selected="false" id="tab-btn-today">I dag</button>
+      <button class="tab-btn active" data-tab="today" role="tab" aria-selected="true" id="tab-btn-today">I dag</button>
       <button class="tab-btn" data-tab="teachdays" role="tab" aria-selected="false" id="tab-btn-teachdays">Undervisningsdage</button>
+      <button class="tab-btn" data-tab="planning" role="tab" aria-selected="false" id="tab-btn-planning">Planlægning</button>
     </div>
   </div>
 </header>
 
 <main>
+  <!-- ═══════════════════════ I DAG ═══════════════════════ -->
+  <section class="view active" id="view-today">
+    <div class="wrap">
+      <div class="page-head"><h1>I dag — onsdag</h1><p>Skriv hurtige noter til hver elev uden at åbne siden — og når lektionen er slut, send en note til eleven og læg videoer og filer op.</p></div>
+      <div id="today-list"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ UNDERVISNINGSDAGE ═══════════════════════ -->
+  <section class="view" id="view-teachdays">
+    <div class="wrap">
+      <div class="page-head"><h1>Undervisningsdage</h1><p>Bruges sjældent — typisk ved terminstart eller når elevholdet ændrer sig. Hurtigt overblik over hvilke dage du underviser fremover. Aflys en hel dag med ét klik — alle berørte elever får en mail, som du kan redigere for denne ene gang, før den sendes. Eller opret en ekstra undervisningsdag ud over det faste skema — så sendes individuelle kalenderinvitationer til de valgte elever.</p></div>
+
+      <div class="panel">
+        <div class="section-label"><span>Undervisningsdage</span><span class="count-chip" id="teachdays-count">0</span></div>
+        <div id="teachdays-list"></div>
+        <button class="btn-text" id="add-teachday-toggle" style="margin-top:14px;">+ Opret ekstra undervisningsdag</button>
+        <div id="add-teachday-form" hidden></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ═══════════════════════ PLANLÆGNING ═══════════════════════ -->
-  <section class="view active" id="view-planning">
+  <section class="view" id="view-planning">
     <div class="wrap">
       <div class="page-head"><h1>Planlægning</h1><p>Tildel faste tider i ro og mag — intet oprettes i Google Kalender, før du udgiver.</p></div>
 
@@ -316,28 +338,6 @@
         <div class="section-label" style="margin-top:24px;"><span>Fakturaer</span></div>
         <p class="section-sub">Oprettes automatisk som kladde i slutningen af hver måned — du godkender, så oprettes fakturaen i e-conomic, hvor du trykker "send" en sidste gang.</p>
         <div class="row-list" id="invoices-list"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════ I DAG ═══════════════════════ -->
-  <section class="view" id="view-today">
-    <div class="wrap">
-      <div class="page-head"><h1>I dag — onsdag</h1><p>Skriv hurtige noter til hver elev uden at åbne siden — og når lektionen er slut, send en note til eleven og læg videoer og filer op.</p></div>
-      <div id="today-list"></div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════ UNDERVISNINGSDAGE ═══════════════════════ -->
-  <section class="view" id="view-teachdays">
-    <div class="wrap">
-      <div class="page-head"><h1>Undervisningsdage</h1><p>Bruges sjældent — typisk ved terminstart eller når elevholdet ændrer sig. Hurtigt overblik over hvilke dage du underviser fremover. Aflys en hel dag med ét klik — alle berørte elever får en mail, som du kan redigere for denne ene gang, før den sendes. Eller opret en ekstra undervisningsdag ud over det faste skema — så sendes individuelle kalenderinvitationer til de valgte elever.</p></div>
-
-      <div class="panel">
-        <div class="section-label"><span>Undervisningsdage</span><span class="count-chip" id="teachdays-count">0</span></div>
-        <div id="teachdays-list"></div>
-        <button class="btn-text" id="add-teachday-toggle" style="margin-top:14px;">+ Opret ekstra undervisningsdag</button>
-        <div id="add-teachday-form" hidden></div>
       </div>
     </div>
   </section>
