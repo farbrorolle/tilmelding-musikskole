@@ -1029,13 +1029,23 @@
       });
 
       const openBtn = card.querySelector(".open-lesson");
+      const detailEl = card.querySelector(".lesson-card-detail");
+      function openLessonDetail() {
+        detailEl.hidden = false;
+        detailEl.innerHTML = buildLessonDetailHtml(lesson);
+        wireLessonDetail(detailEl, lesson);
+        if (openBtn) openBtn.textContent = "Luk";
+      }
+      function closeLessonDetail() {
+        detailEl.hidden = true;
+        if (openBtn) openBtn.textContent = "Åbn";
+      }
       if (openBtn) {
         openBtn.addEventListener("click", () => {
-          const detail = card.querySelector(".lesson-card-detail");
-          const isOpen = !detail.hidden;
-          detail.hidden = isOpen;
-          if (!isOpen) { detail.innerHTML = buildLessonDetailHtml(lesson); wireLessonDetail(detail, lesson); }
+          if (detailEl.hidden) openLessonDetail(); else closeLessonDetail();
         });
+        // Åben som standard, så video- og registrér-knapperne er lige ved hånden.
+        openLessonDetail();
       }
       el.appendChild(card);
     });
