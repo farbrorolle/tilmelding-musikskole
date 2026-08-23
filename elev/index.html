@@ -273,6 +273,18 @@
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96dHp4cnhmd3Z2Y2NycXpoaXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNDc0NzYsImV4cCI6MjEwMjkyMzQ3Nn0.ar7EL8jIwYAhFzKIYyXwnANbRfy8iUOlP5Vo2C0rlmM";
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  // Fanges når eleven kommer ind via et invitationslink fra Olle (sendt via
+  // "Send invitation" på lærersiden) — linket logger dem stiltiende ind og
+  // udløser denne hændelse, hvorefter de skal vælge deres eget kodeord, før
+  // de kan se Min side. Registreres her, før init() kaldes forneden.
+  sb.auth.onAuthStateChange((event, sess) => {
+    if (event === "PASSWORD_RECOVERY") {
+      session = sess;
+      state.passwordRecovery = true;
+      switchView("signup");
+    }
+  });
+
   const WEEKDAYS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag"];
   const WEEKDAYS_PLURAL = ["Mandage", "Tirsdage", "Onsdage", "Torsdage", "Fredage"];
   const WEEKDAYS_SHORT = ["Man", "Tir", "Ons", "Tor", "Fre"];
@@ -353,6 +365,7 @@
     signupNeedsConfirm: false,
     authMode: "login",
     signupDraft: { name: "", email: "", phone: "", instrument: "", message: "", password: "", password2: "" },
+    passwordRecovery: false,
   };
 
   async function loadElevData() {
@@ -376,6 +389,34 @@
   // ═══════════════════════ ELEVADGANG (log ind / opret bruger) ═══════════════════════
   function renderSignup() {
     const el = document.getElementById("signup-content");
+
+    if (state.passwordRecovery) {
+      el.innerHTML =
+        '<div class="panel"><div class="section-label"><span>Vælg din adgangskode</span></div>' +
+        '<p class="section-sub">Olle har oprettet en konto til dig — vælg en adgangskode for at komme i gang.</p>' +
+        '<form id="recovery-form">' +
+        '<label class="field" style="margin-top:0;"><span>Ny adgangskode</span><input required type="password" id="rec-password" placeholder="Mindst 6 tegn"></label>' +
+        '<label class="field"><span>Bekræft adgangskode</span><input required type="password" id="rec-password2" placeholder="Gentag adgangskoden"></label>' +
+        '<div id="recovery-error"></div>' +
+        '<button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;">Gem adgangskode &amp; log ind</button></form></div>';
+      document.getElementById("recovery-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const p1 = document.getElementById("rec-password").value;
+        const p2 = document.getElementById("rec-password2").value;
+        const errEl = document.getElementById("recovery-error");
+        errEl.innerHTML = "";
+        if (p1.length < 6) { errEl.innerHTML = '<p class="error-msg">Adgangskoden skal være mindst 6 tegn.</p>'; return; }
+        if (p1 !== p2) { errEl.innerHTML = '<p class="error-msg">Adgangskoderne matcher ikke.</p>'; return; }
+        const { error } = await sb.auth.updateUser({ password: p1 });
+        if (error) { errEl.innerHTML = '<p class="error-msg">' + friendlyAuthError(error.message) + "</p>"; return; }
+        state.passwordRecovery = false;
+        await loadElevData();
+        updateNav();
+        switchView("portal");
+        toast("Adgangskode gemt — velkommen!");
+      });
+      return;
+    }
 
     if (state.signupNeedsConfirm) {
       el.innerHTML =
