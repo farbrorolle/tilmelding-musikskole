@@ -127,6 +127,9 @@
   .day-checklist { display: flex; flex-direction: column; gap: 7px; margin: 8px 0 4px; }
   .day-checklist label { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
   .day-checklist input { width: auto; }
+  .create-day-form label.check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-soft); margin: 2px 0; }
+  .create-day-select-all-row { border-bottom: 1px dashed var(--border-soft); padding-bottom: 8px; margin-bottom: 6px; }
+  .create-day-mail-wrap { margin-top: 4px; }
 
   /* ───────────────────────── Generic rows / lessons ───────────────────────── */
   .row-list .divider-row:first-child { border-top: none; }
@@ -508,13 +511,23 @@
       wireCreateDayForm(form);
     }
   });
+  function defaultExtraDayMessage(iso) {
+    const dateStr = iso ? formatDate(iso) : "den nye dag";
+    return "Hej!\n\nJeg har oprettet en ekstra undervisningsdag " + dateStr + ". I skulle gerne have modtaget en kalenderinvitation — sig endelig til, hvis den ikke dukker op.\n\nMange hilsner,\nOlle";
+  }
+
   function buildCreateDayFormHtml() {
     const names = uniqueStudentNames();
     return (
       '<label class="field" style="margin-top:0;"><span>Dato</span><input type="date" class="create-day-date"></label>' +
       '<label class="field"><span>Hvilke elever skal have en kalenderinvitation?</span></label>' +
+      '<div class="create-day-select-all-row"><label class="check"><input type="checkbox" class="create-day-select-all" checked> Vælg/fravælg alle</label></div>' +
       '<div class="day-checklist">' +
-      names.map((name) => '<label><input type="checkbox" class="create-day-student" value="' + name + '"> ' + name + "</label>").join("") +
+      names.map((name) => '<label><input type="checkbox" class="create-day-student" value="' + name + '" checked> ' + name + "</label>").join("") +
+      "</div>" +
+      '<label class="check" style="margin-top:10px;"><input type="checkbox" class="create-day-send-mail"> Send også en mail til eleverne</label>' +
+      '<div class="create-day-mail-wrap" hidden>' +
+      '<label class="field" style="margin-top:8px;"><span>Besked til eleverne (valgfri, kan redigeres)</span><textarea class="create-day-message" rows="5">' + defaultExtraDayMessage(null) + "</textarea></label>" +
       "</div>" +
       '<div style="display:flex;gap:10px;margin-top:12px;">' +
       '<button class="btn btn-primary btn-small confirm-create-day">Opret dag &amp; send kalenderinvitationer</button>' +
@@ -523,9 +536,30 @@
     );
   }
   function wireCreateDayForm(form) {
+    const dateInput = form.querySelector(".create-day-date");
+    const selectAll = form.querySelector(".create-day-select-all");
+    const studentBoxes = Array.from(form.querySelectorAll(".create-day-student"));
+    const sendMailBox = form.querySelector(".create-day-send-mail");
+    const mailWrap = form.querySelector(".create-day-mail-wrap");
+    const messageBox = form.querySelector(".create-day-message");
+
+    selectAll.addEventListener("change", () => {
+      studentBoxes.forEach((box) => { box.checked = selectAll.checked; });
+    });
+    studentBoxes.forEach((box) => {
+      box.addEventListener("change", () => {
+        selectAll.checked = studentBoxes.every((b) => b.checked);
+      });
+    });
+    sendMailBox.addEventListener("change", () => { mailWrap.hidden = !sendMailBox.checked; });
+    dateInput.addEventListener("change", () => {
+      if (!messageBox.dataset.dirty) messageBox.value = defaultExtraDayMessage(dateInput.value);
+    });
+    messageBox.addEventListener("input", () => { messageBox.dataset.dirty = "1"; });
+
     form.querySelector(".confirm-create-day").addEventListener("click", () => {
-      const dateVal = form.querySelector(".create-day-date").value;
-      const checked = Array.from(form.querySelectorAll(".create-day-student:checked")).map((el) => el.value);
+      const dateVal = dateInput.value;
+      const checked = studentBoxes.filter((el) => el.checked).map((el) => el.value);
       if (!dateVal) { toast("Vælg en dato først."); return; }
       if (checked.length === 0) { toast("Vælg mindst én elev."); return; }
       const students = checked.map((name) => {
@@ -535,7 +569,8 @@
       state.extraDays.push({ date: dateVal, students });
       document.getElementById("add-teachday-form").hidden = true;
       renderTeachDays();
-      toast("Ekstra undervisningsdag oprettet " + formatDate(dateVal) + " — individuel kalenderinvitation sendt til " + checked.length + " elev" + (checked.length === 1 ? "" : "er") + " (" + checked.join(", ") + ").");
+      const mailSuffix = sendMailBox.checked ? " Mail sendt med den viste tekst." : "";
+      toast("Ekstra undervisningsdag oprettet " + formatDate(dateVal) + " — individuel kalenderinvitation sendt til " + checked.length + " elev" + (checked.length === 1 ? "" : "er") + " (" + checked.join(", ") + ")." + mailSuffix);
     });
     form.querySelector(".close-create-day").addEventListener("click", () => { document.getElementById("add-teachday-form").hidden = true; });
   }
