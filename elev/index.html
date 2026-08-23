@@ -1,0 +1,680 @@
+<title>Elevside — Olles lille musikskole</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Karla:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+
+<style>
+  /* ───────────────────────── Tokens ───────────────────────── */
+  :root {
+    --bg: #F6F2EA;
+    --bg-raised: #FFFDF9;
+    --ink: #1F2E28;
+    --ink-soft: #5B6B62;
+    --ink-faint: #93A199;
+    --border: #DED5C4;
+    --border-soft: #E9E2D3;
+    --accent: #B8863D;
+    --accent-ink: #FFFDF9;
+    --accent-wash: #EFE0C4;
+    --rose: #B4587A;
+    --rose-wash: #F3DEE6;
+    --sage: #5C7A63;
+    --sage-wash: #DEE7DE;
+    --shadow: 220 30% 12%;
+    --focus: #8A5B22;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141F1A; --bg-raised: #1B2721; --ink: #F2ECDE; --ink-soft: #AAB8AC; --ink-faint: #6D7C71;
+      --border: #33443B; --border-soft: #263229; --accent: #D9A54F; --accent-ink: #1B2721; --accent-wash: #3A331F;
+      --rose: #D888A4; --rose-wash: #3A2530; --sage: #8FB097; --sage-wash: #223229; --focus: #E7BC6E;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141F1A; --bg-raised: #1B2721; --ink: #F2ECDE; --ink-soft: #AAB8AC; --ink-faint: #6D7C71;
+    --border: #33443B; --border-soft: #263229; --accent: #D9A54F; --accent-ink: #1B2721; --accent-wash: #3A331F;
+    --rose: #D888A4; --rose-wash: #3A2530; --sage: #8FB097; --sage-wash: #223229; --focus: #E7BC6E;
+  }
+
+  /* ───────────────────────── Base ───────────────────────── */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Karla", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: "Spectral", Georgia, serif; text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  button { font-family: inherit; }
+  ::selection { background: var(--accent-wash); }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
+
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 40px); }
+
+  /* ───────────────────────── Header ───────────────────────── */
+  .skiss-badge { background: var(--sage-wash); color: var(--sage); text-align: center; font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em; padding: 7px 12px; }
+  header.site { padding: 24px 0 16px; border-bottom: 1px solid var(--border-soft); }
+  .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .wordmark { display: flex; align-items: baseline; gap: 10px; }
+  .wordmark .mark { font-family: "Spectral", serif; font-style: italic; font-size: 24px; color: var(--accent); line-height: 1; }
+  .wordmark .name { font-family: "Spectral", serif; font-size: 19px; font-weight: 500; color: var(--ink); }
+  .tabs { display: inline-flex; background: var(--border-soft); border-radius: 999px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .tab-btn { border: none; background: transparent; color: var(--ink-soft); font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; white-space: nowrap; }
+  .tab-btn.active { background: var(--ink); color: var(--bg-raised); }
+  .tab-btn:hover:not(.active) { color: var(--ink); }
+
+  main { padding: 36px 0 80px; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ───────────────────────── Hero / page head ───────────────────────── */
+  .hero { padding: 8px 0 40px; }
+  .hero .eyebrow { font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rose); margin-bottom: 12px; display: block; }
+  .hero h1 { font-size: clamp(26px, 4.2vw, 36px); font-weight: 500; line-height: 1.16; max-width: 18ch; }
+  .hero p.lede { margin-top: 16px; font-size: 15.5px; color: var(--ink-soft); max-width: 52ch; line-height: 1.6; }
+  .page-head { margin-bottom: 26px; }
+  .page-head h1 { font-size: 23px; font-weight: 500; }
+  .page-head p { color: var(--ink-soft); font-size: 14px; margin-top: 6px; }
+
+  /* ───────────────────────── Panels ───────────────────────── */
+  .panel { background: var(--bg-raised); border: 1px solid var(--border-soft); border-radius: 18px; padding: 26px clamp(18px, 3vw, 30px); }
+  .panel + .panel { margin-top: 20px; }
+  .section-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .section-sub { font-size: 12.5px; color: var(--ink-faint); margin: -6px 0 16px; }
+
+  /* ───────────────────────── Slot chips (tilmelding) ───────────────────────── */
+  .day-block + .day-block { margin-top: 16px; }
+  .day-block .day-name { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .slot-chip { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; border: 1px solid var(--border); background: var(--bg-raised); color: var(--ink-soft); padding: 8px 13px; border-radius: 999px; cursor: pointer; transition: all 0.15s ease; }
+  .slot-chip:hover { border-color: var(--ink-faint); }
+  .slot-chip.selected { background: var(--ink); border-color: var(--ink); color: var(--bg-raised); }
+
+  /* ───────────────────────── Form ───────────────────────── */
+  .field { display: block; margin-top: 14px; }
+  .field span { display: block; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 5px; font-weight: 500; }
+  .field input, .field textarea, .field select { width: 100%; font-family: inherit; font-size: 14.5px; color: var(--ink); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 64px; font-family: inherit; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: none; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; padding: 12px 22px; transition: transform 0.1s ease, background 0.15s ease, opacity 0.15s ease; }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--ink); color: var(--bg-raised); }
+  .btn-primary:hover { background: var(--accent); color: var(--accent-ink); }
+  .btn-ghost { background: transparent; color: var(--ink-soft); border: 1px solid var(--border); padding: 9px 16px; font-size: 13px; }
+  .btn-ghost:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .btn-block { width: 100%; padding: 13px 22px; }
+  .btn-small { padding: 7px 14px; font-size: 12.5px; }
+  .btn-text { background: none; border: none; cursor: pointer; color: var(--accent); font-size: 12.5px; font-weight: 600; padding: 4px 2px; }
+  .btn-text:hover { text-decoration: underline; }
+  .error-msg { color: var(--rose); font-size: 13px; margin-top: 12px; }
+
+  /* ───────────────────────── Log ind / opret bruger ───────────────────────── */
+  .auth-toggle { display: inline-flex; background: var(--border-soft); border-radius: 999px; padding: 3px; gap: 2px; margin-bottom: 20px; }
+  .authmode-btn { border: none; background: transparent; color: var(--ink-soft); font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 999px; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+  .authmode-btn.active { background: var(--ink); color: var(--bg-raised); }
+  .authmode-btn:hover:not(.active) { color: var(--ink); }
+
+  /* ───────────────────────── Confirmation ───────────────────────── */
+  .confirm-card { background: var(--ink); color: var(--bg-raised); border-radius: 18px; padding: 34px 30px; text-align: left; }
+  .confirm-card .icon { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 16px; }
+  .confirm-card h2 { font-size: 22px; font-weight: 500; color: var(--bg-raised); }
+  .confirm-card p { margin-top: 8px; color: #C7CFC9; line-height: 1.6; font-size: 14.5px; }
+
+  /* ───────────────────────── Generic rows / tags ───────────────────────── */
+  .row-list .divider-row:first-child { border-top: none; }
+  .divider-row { border-top: 1px solid var(--border-soft); padding: 12px 0; display: flex; align-items: center; gap: 12px; }
+  .mono-date { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-faint); width: 96px; flex-shrink: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mono-time { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-faint); width: 42px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .row-title { flex: 1; min-width: 0; font-size: 14px; }
+  .row-title .name { font-weight: 600; }
+  .tag { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-left: 7px; vertical-align: 1px; }
+  .tag-instr { background: var(--border-soft); color: var(--ink-soft); }
+  .tag-done { background: var(--sage-wash); color: var(--sage); }
+  .tag-pending { background: var(--accent-wash); color: var(--accent); }
+  .tag-tobill { background: var(--accent-wash); color: var(--accent); }
+  .tag-sent { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .empty-state { text-align: center; color: var(--ink-faint); font-size: 13.5px; font-style: italic; padding: 26px 10px; }
+
+  /* ───────────────────────── Fast tid ───────────────────────── */
+  .fixed-time-hero { background: var(--ink); color: var(--bg-raised); border-radius: 18px; padding: 22px clamp(18px, 3vw, 28px); }
+  .fixed-time-hero .label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: #A9B3A8; margin-bottom: 10px; }
+  .fixed-time-hero .big { font-family: "Spectral", serif; font-size: 24px; }
+  .next-lesson-note { margin-top: 14px; padding-top: 14px; border-top: 1px solid #33433A; font-size: 13.5px; color: #D6DBD5; }
+  .next-lesson-note b { color: var(--bg-raised); }
+  .subscribe-panel { margin-top: 12px; padding-top: 12px; border-top: 1px solid #33433A; }
+  .subscribe-panel p { font-size: 12.5px; color: #D6DBD5; line-height: 1.5; margin-bottom: 10px; }
+  .subscribe-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .subscribe-row code { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; background: #0F1815; color: #D6DBD5; padding: 8px 10px; border-radius: 8px; flex: 1; min-width: 200px; overflow-wrap: anywhere; }
+
+  /* ───────────────────────── Materiale (video/fil-rækker) ───────────────────────── */
+  .song-group + .song-group { margin-top: 18px; }
+  .song-group .song-name { font-size: 12.5px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+  .video-row { border: 1px solid var(--border-soft); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+  .video-row + .video-row { margin-top: 8px; }
+  .video-play { flex-shrink: 0; width: 32px; height: 32px; border-radius: 9px; background: var(--accent-wash); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .video-info { flex: 1; min-width: 0; }
+  .video-info .vtitle { font-size: 13.5px; font-weight: 600; display: block; }
+  .video-info .vmeta { font-size: 11px; color: var(--ink-faint); margin-top: 2px; display: block; }
+
+  /* ───────────────────────── Sidste besked / fakturaer (Min side) ───────────────────────── */
+  .last-note-card { background: var(--border-soft); border-radius: 14px; padding: 16px 18px; }
+  .last-note-card .ln-date { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px; }
+  .last-note-card .ln-text { font-size: 14.5px; color: var(--ink); line-height: 1.6; }
+  .invoice-next-line { font-size: 13px; color: var(--ink-soft); margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--border); }
+  .invoice-next-line span:first-child { font-weight: 700; color: var(--ink); margin-right: 8px; }
+  .invoice-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--border-soft); }
+  .invoice-row:first-child { border-top: none; }
+  .invoice-row .iname { flex: 1; font-size: 14px; font-weight: 600; }
+  .invoice-row .iperiod { font-size: 11.5px; color: var(--ink-faint); margin-left: 8px; }
+  .invoice-row .iamount { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--ink-soft); margin-right: 14px; white-space: nowrap; }
+
+  /* ───────────────────────── Toast ───────────────────────── */
+  #toast-stack { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 50; width: min(92vw, 440px); }
+  .toast { background: var(--ink); color: var(--bg-raised); border-radius: 12px; padding: 12px 16px; font-size: 13.5px; box-shadow: 0 8px 24px hsl(var(--shadow) / 0.28); display: flex; align-items: center; gap: 10px; animation: toast-in 0.22s ease; }
+  .toast .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  footer.site { border-top: 1px solid var(--border-soft); padding: 22px 0 40px; text-align: center; color: var(--ink-faint); font-size: 12.5px; }
+
+  @media (max-width: 640px) {
+    .mono-date { width: 64px; }
+  }
+</style>
+
+<div class="skiss-badge">Klikbar skitse — samme Elevadgang og Min side du allerede har set i elevportal-skitsen, nu på sin egen adresse. Ingen rigtige logins, kalenderinvitationer, mails eller uploads her, og intet rører tilmeldingssiden på /tilmelding eller lærerens værktøjer på /laerer.</div>
+
+<header class="site">
+  <div class="wrap brand-row">
+    <div class="wordmark"><span class="mark">♪</span><span class="name">Olles lille musikskole</span></div>
+    <div class="tabs" role="tablist" aria-label="Vis side">
+      <button class="tab-btn active" data-tab="signup" role="tab" aria-selected="true" id="tab-btn-signup">Elevadgang</button>
+      <button class="tab-btn" data-tab="portal" role="tab" aria-selected="false" id="tab-btn-portal" hidden>Min side</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ═══════════════════════ ELEVADGANG ═══════════════════════ -->
+  <section class="view active" id="view-signup">
+    <div class="wrap">
+      <div class="hero">
+        <span class="eyebrow">Piano · Guitar · Sang</span>
+        <h1>En fast lektionstid, afstemt efter dit skema.</h1>
+        <p class="lede">Har du allerede en bruger? Log ind for at se din side. Ny her? Opret en bruger og skriv dig op på de tider der passer dig — Olle sætter en fast ugentlig tid til dig, og du får en kalenderinvitation, når skemaet er klart.</p>
+      </div>
+
+      <div id="signup-content"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ MIN SIDE ═══════════════════════ -->
+  <section class="view" id="view-portal">
+    <div class="wrap">
+      <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <div><h1>Emma S. — din side</h1><p>Din faste lektionstid og materiale fra Olle.</p></div>
+        <button class="btn-text" id="portal-logout">Log ud</button>
+      </div>
+      <div class="fixed-time-hero">
+        <p class="label">Din faste tid</p>
+        <p class="big" id="portal-fixed-time">Onsdage kl. 14:00</p>
+        <div class="next-lesson-note" id="portal-next-note">Næste gang er 26. aug. — allerede i din Google-kalender.</div>
+        <button class="btn-text" id="portal-subscribe-toggle" style="margin-top:12px;color:#fff;">📅 Abonnér på din kalender</button>
+        <div id="portal-subscribe-panel" class="subscribe-panel" hidden>
+          <p>Tilføj dette link i Google Kalender, Apple Kalender eller Outlook — det opdateres automatisk, hver gang Olle ændrer noget, uden at du behøver gøre det igen.</p>
+          <div class="subscribe-row">
+            <code id="portal-subscribe-link">webcal://olleslillemusikskole.dk/kalender/emma-s-9f21.ics</code>
+            <button class="btn btn-ghost btn-small" id="portal-subscribe-copy" style="border-color:#ffffff33;color:#fff;">Kopiér link</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="section-label"><span>Fra sidste lektion</span></div>
+        <div id="portal-last-note"></div>
+        <button class="btn-text" id="portal-notes-toggle" style="margin-top:12px;">Se tidligere beskeder</button>
+        <div class="row-list" id="portal-notes-history" hidden style="margin-top:8px;"></div>
+      </div>
+      <div class="panel">
+        <div class="section-label"><span>Materiale fra Olle</span></div>
+        <p class="section-sub">Senest tilføjet</p>
+        <div id="portal-recent-media"></div>
+        <button class="btn-text" id="portal-media-toggle" style="margin-top:14px;">Se alt materiale</button>
+        <div id="portal-videos" hidden style="margin-top:10px;"></div>
+      </div>
+      <div class="panel">
+        <div class="section-label"><span>Dine kommende lektioner</span></div>
+        <p class="section-sub">Alle dine bookede tider fremover — samme liste som ligger i din Google-kalender.</p>
+        <div class="row-list" id="portal-upcoming"></div>
+      </div>
+      <div class="panel">
+        <div class="section-label"><span>Gennemførte lektioner</span></div>
+        <p class="section-sub">Din lektionshistorik.</p>
+        <div class="row-list" id="portal-completed"></div>
+      </div>
+      <div class="panel">
+        <div class="section-label"><span>Mine fakturaer</span></div>
+        <p class="section-sub">Sendes i starten af hver måned, for forrige periodes lektioner.</p>
+        <div class="invoice-next-line"><span id="portal-invoice-total">0 kr.</span><span id="portal-invoice-note"></span></div>
+        <div class="row-list" id="portal-invoices"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">Skitse til elevsiden · Elevadgang og Min side, samme datamodel som backend-koden på /tilmelding og /laerer.<br><span style="display:inline-block;margin-top:6px;">Kommentarer og ønsker til flow eller indhold modtages meget gerne, før den kobles til rigtig database, login og Google Kalender.</span></footer>
+<div id="toast-stack"></div>
+
+<script>
+  const WEEKDAYS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag"];
+  const WEEKDAYS_PLURAL = ["Mandage", "Tirsdage", "Onsdage", "Torsdage", "Fredage"];
+  const WEEKDAYS_SHORT = ["Man", "Tir", "Ons", "Tor", "Fre"];
+  let uid = 200;
+  const nextId = () => "id" + (uid++);
+
+  function toast(msg) {
+    const stack = document.getElementById("toast-stack");
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.innerHTML = '<span class="dot"></span><span>' + msg + "</span>";
+    stack.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 250);
+    }, 3600);
+  }
+  function formatDate(iso) { const d = new Date(iso + "T00:00:00"); return d.toLocaleDateString("da-DK", { weekday: "short", day: "numeric", month: "short" }); }
+  // weekdayIdx: 0=Man..4=Fre. Returnerer `count` kommende ISO-datoer for den ugedag, fra næste uge.
+  function nextOccurrenceDates(weekdayIdx, count) {
+    const targetDow = weekdayIdx + 1; // JS getDay(): 0=Søn..6=Lør, altså Man=1..Fre=5
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    let delta = (targetDow - d.getDay() + 7) % 7;
+    if (delta === 0) delta = 7;
+    d.setDate(d.getDate() + delta);
+    const dates = [];
+    for (let i = 0; i < count; i++) {
+      dates.push(d.toISOString().slice(0, 10));
+      d.setDate(d.getDate() + 7);
+    }
+    return dates;
+  }
+  // Alle ISO-datoer for en ugedag (0=Man..4=Fre) fra `weeksBack` uger siden til `weeksForward` uger frem.
+  function datesForWeekday(weekdayIdx, weeksBack, weeksForward) {
+    const targetDow = weekdayIdx + 1;
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    const base = new Date(d);
+    base.setDate(base.getDate() + (targetDow - d.getDay()));
+    const dates = [];
+    for (let w = -weeksBack; w <= weeksForward; w++) {
+      const dt = new Date(base);
+      dt.setDate(dt.getDate() + w * 7);
+      dates.push(dt.toISOString().slice(0, 10));
+    }
+    return dates;
+  }
+  function classifyByDate(iso) {
+    const days = Math.round((new Date(iso + "T00:00:00") - new Date(new Date().toDateString())) / 86400000);
+    if (days >= 0) return "upcoming";
+    return -days > 7 ? "billed" : "tobill";
+  }
+
+  // ───────────────────────── Faner ─────────────────────────
+  // To helt adskilte sider i den rigtige version (elev.olleslillemusikskole.dk og
+  // lærerens egen adresse) — her på elevsidens egen route er der kun Elevadgang og Min side,
+  // ingen kobling til eller viden om lærerens værktøjer overhovedet.
+  document.querySelectorAll(".tab-btn").forEach((btn) => btn.addEventListener("click", () => switchView(btn.dataset.tab)));
+  function switchView(name) {
+    ["signup", "portal"].forEach((v) => document.getElementById("view-" + v).classList.toggle("active", v === name));
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      const active = btn.dataset.tab === name;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-selected", active);
+    });
+    if (name === "signup") renderSignup();
+    if (name === "portal") renderPortal();
+  }
+  function updateNav() {
+    document.getElementById("tab-btn-signup").hidden = state.elevAuthed;
+    document.getElementById("tab-btn-portal").hidden = !state.elevAuthed;
+  }
+
+  // ═══════════════════════ STATE ═══════════════════════
+  const state = {
+    slots: [
+      { id: "s1", weekday: 0, start: "15:00", end: "16:00" },
+      { id: "s2", weekday: 2, start: "16:00", end: "17:00" },
+      { id: "s3", weekday: 2, start: "17:00", end: "18:00" },
+      { id: "s4", weekday: 3, start: "15:30", end: "16:30" },
+      { id: "s5", weekday: 4, start: "14:00", end: "15:00" },
+    ],
+    signupSelectedSlots: new Set(),
+    signupDone: false,
+    // Klassisk elevadgang: "log ind" eller "opret bruger" er første side. Når elevAuthed er
+    // sand, viser navigationen kun "Min side" for eleven — ingen anden fane at fare vild i.
+    authMode: "login",
+    elevAuthed: false,
+    // Holder på det brugeren allerede har skrevet, så det ikke forsvinder når formularen
+    // gentegnes (fx når man sætter kryds ved endnu en tid).
+    signupDraft: { name: "", email: "", phone: "", instrument: "", message: "", password: "", password2: "" },
+  };
+
+  function slotLabel(weekday, start, end) { return WEEKDAYS_SHORT[weekday] + " " + start.slice(0, 5) + "–" + end.slice(0, 5); }
+
+  // ═══════════════════════ ELEVADGANG (log ind / opret bruger) ═══════════════════════
+  function renderSignup() {
+    const el = document.getElementById("signup-content");
+
+    if (state.signupDone) {
+      el.innerHTML =
+        '<div class="confirm-card"><div class="icon">✓</div>' +
+        "<h2>Tak, din bruger er oprettet!</h2>" +
+        "<p>Olle sætter en fast ugentlig tid til dig ud fra dine ønsker. Du får en kalenderinvitation til hele sæsonens lektioner, så snart skemaet er klart — fra nu af logger du bare ind for at se din side.</p>" +
+        '<button class="btn btn-ghost" style="margin-top:18px;border-color:#ffffff33;color:#fff;" id="signup-goto-portal">Gå til Min side →</button></div>';
+      document.getElementById("signup-goto-portal").addEventListener("click", () => {
+        state.signupDone = false;
+        state.authMode = "login";
+        state.elevAuthed = true;
+        updateNav();
+        switchView("portal");
+        toast("Velkommen! Du er nu logget ind.");
+      });
+      return;
+    }
+
+    const modeToggle =
+      '<div class="auth-toggle" role="tablist" aria-label="Log ind eller opret bruger">' +
+      '<button type="button" class="authmode-btn' + (state.authMode === "login" ? " active" : "") + '" data-mode="login">Log ind</button>' +
+      '<button type="button" class="authmode-btn' + (state.authMode === "signup" ? " active" : "") + '" data-mode="signup">Opret bruger</button>' +
+      "</div>";
+
+    if (state.authMode === "login") {
+      el.innerHTML =
+        modeToggle +
+        '<div class="panel"><div class="section-label"><span>Log ind</span></div>' +
+        '<form id="login-form">' +
+        '<label class="field"><span>Mailadresse</span><input required type="email" id="l-email" placeholder="dig@mail.dk"></label>' +
+        '<label class="field"><span>Adgangskode</span><input required type="password" id="l-password" placeholder="••••••••"></label>' +
+        '<div id="login-error"></div>' +
+        '<button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;">Log ind</button></form>' +
+        '<p style="margin-top:16px;font-size:13px;color:var(--ink-soft);">Ny hos os? <button type="button" class="btn-text" id="go-to-signup">Opret bruger og skriv dig op</button></p>' +
+        "</div>";
+
+      document.querySelectorAll(".authmode-btn").forEach((btn) => btn.addEventListener("click", () => { state.authMode = btn.dataset.mode; renderSignup(); }));
+      document.getElementById("go-to-signup").addEventListener("click", () => { state.authMode = "signup"; renderSignup(); });
+      document.getElementById("login-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const email = document.getElementById("l-email").value.trim();
+        const password = document.getElementById("l-password").value;
+        const errEl = document.getElementById("login-error");
+        errEl.innerHTML = "";
+        if (!email || !password) { errEl.innerHTML = '<p class="error-msg">Udfyld både mail og adgangskode.</p>'; return; }
+        state.elevAuthed = true;
+        updateNav();
+        switchView("portal");
+        toast("Logget ind som Emma S.");
+      });
+      return;
+    }
+
+    // authMode === "signup": opret bruger, mens man skriver sine ønsker op
+    const dayBlocks = WEEKDAYS.map((_, wd) => state.slots.filter((s) => s.weekday === wd)).filter((l) => l.length);
+
+    el.innerHTML =
+      modeToggle +
+      '<div class="panel"><div class="section-label"><span>Ledige tider — sæt kryds ved dem der passer dig</span></div>' +
+      '<p class="section-sub">Du får ikke nødvendigvis lige præcis dette tidspunkt, men Olle tager udgangspunkt i dine valg.</p>' +
+      '<div id="slot-picker"></div></div>' +
+      '<div class="panel"><div class="section-label"><span>Dine oplysninger</span></div>' +
+      '<form id="signup-form">' +
+      '<label class="field"><span>Navn</span><input required id="f-name" placeholder="For- og efternavn" value="' + state.signupDraft.name + '"></label>' +
+      '<label class="field"><span>Mailadresse</span><input required type="email" id="f-email" placeholder="dig@mail.dk" value="' + state.signupDraft.email + '"></label>' +
+      '<label class="field"><span>Telefonnummer</span><input required type="tel" id="f-phone" placeholder="+45 20 …" value="' + state.signupDraft.phone + '"></label>' +
+      '<label class="field"><span>Instrument / ønsker</span><input required id="f-instrument" placeholder="F.eks. introduktion til musik, lidt sang, lidt klaver — hvad som helst" value="' + state.signupDraft.instrument + '"></label>' +
+      '<label class="field"><span>Besked (valgfri)</span><textarea id="f-message" placeholder="Erfaring, ønsker, andet Olle bør vide">' + state.signupDraft.message + "</textarea></label>" +
+      '<label class="field"><span>Adgangskode</span><input required type="password" id="f-password" placeholder="Vælg en adgangskode" value="' + state.signupDraft.password + '"></label>' +
+      '<label class="field"><span>Bekræft adgangskode</span><input required type="password" id="f-password2" placeholder="Gentag adgangskoden" value="' + state.signupDraft.password2 + '"></label>' +
+      '<div id="signup-error"></div>' +
+      '<button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;">Opret bruger &amp; skriv mig op</button></form>' +
+      '<p style="margin-top:16px;font-size:13px;color:var(--ink-soft);">Har du allerede en bruger? <button type="button" class="btn-text" id="go-to-login">Log ind</button></p>' +
+      "</div>";
+
+    document.querySelectorAll(".authmode-btn").forEach((btn) => btn.addEventListener("click", () => { state.authMode = btn.dataset.mode; renderSignup(); }));
+    document.getElementById("go-to-login").addEventListener("click", () => { state.authMode = "login"; renderSignup(); });
+
+    const picker = document.getElementById("slot-picker");
+    dayBlocks.forEach((dayList) => {
+      const block = document.createElement("div");
+      block.className = "day-block";
+      block.innerHTML = '<p class="day-name">' + WEEKDAYS[dayList[0].weekday] + "</p>" + '<div class="chip-row"></div>';
+      const row = block.querySelector(".chip-row");
+      dayList.forEach((slot) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "slot-chip" + (state.signupSelectedSlots.has(slot.id) ? " selected" : "");
+        chip.textContent = slot.start.slice(0, 5) + "–" + slot.end.slice(0, 5);
+        chip.addEventListener("click", () => {
+          state.signupSelectedSlots.has(slot.id) ? state.signupSelectedSlots.delete(slot.id) : state.signupSelectedSlots.add(slot.id);
+          renderSignup();
+        });
+        row.appendChild(chip);
+      });
+      picker.appendChild(block);
+    });
+
+    [
+      ["f-name", "name"], ["f-email", "email"], ["f-phone", "phone"],
+      ["f-instrument", "instrument"], ["f-message", "message"],
+      ["f-password", "password"], ["f-password2", "password2"],
+    ].forEach(([fieldId, key]) => {
+      document.getElementById(fieldId).addEventListener("input", (e) => { state.signupDraft[key] = e.target.value; });
+    });
+
+    document.getElementById("signup-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("f-name").value.trim();
+      const email = document.getElementById("f-email").value.trim();
+      const phone = document.getElementById("f-phone").value.trim();
+      const password = document.getElementById("f-password").value;
+      const password2 = document.getElementById("f-password2").value;
+      const errEl = document.getElementById("signup-error");
+      errEl.innerHTML = "";
+      if (!name || !email || !phone) { errEl.innerHTML = '<p class="error-msg">Navn, mail og telefonnummer skal udfyldes.</p>'; return; }
+      if (state.signupSelectedSlots.size === 0) { errEl.innerHTML = '<p class="error-msg">Vælg mindst ét tidspunkt du er interesseret i.</p>'; return; }
+      if (!password || password.length < 6) { errEl.innerHTML = '<p class="error-msg">Adgangskoden skal være mindst 6 tegn.</p>'; return; }
+      if (password !== password2) { errEl.innerHTML = '<p class="error-msg">Adgangskoderne er ikke ens.</p>'; return; }
+
+      state.signupDone = true;
+      state.signupSelectedSlots.clear();
+      state.signupDraft = { name: "", email: "", phone: "", instrument: "", message: "", password: "", password2: "" };
+      renderSignup();
+    });
+  }
+
+  // ═══════════════════════ MIN SIDE ═══════════════════════
+  // Pris per instrument (kr./lektion) — bruges kun til at vise et estimeret fakturabeløb.
+  const LESSON_PRICE = { Piano: 450, Guitar: 450, Sang: 480, Andet: 450 };
+  function formatKr(amount) { return amount.toLocaleString("da-DK") + " kr."; }
+
+  // Demo-elevens egen faste tid — i den rigtige version hentet fra hendes egen konto,
+  // ikke fra en delt liste med andre elever (elevsiden kender kun sig selv).
+  const myAssignment = { weekday: 2, start: "14:00", end: "14:45", instrument: "Piano" };
+
+  // Korte noter Olle har skrevet efter tidligere lektioner — nyeste fremhævet på Min side,
+  // resten bag "Se tidligere beskeder".
+  const myNotes = [
+    { date: "2026-08-12", summary: "Gennemgik tonleiter C-dur, startede på Für Elise takt 1–8. Øv gerne venstre hånd alene derhjemme." },
+    { date: "2026-08-05", summary: "Repetition af sommerens stykker, snakkede om den nye sæson." },
+    { date: "2026-06-24", summary: "Sidste lektion før sommerpausen — opsummerede årets fremgang." },
+  ];
+
+  // daysAgo bruges til at afgøre hvad der er "senest tilføjet" — array-rækkefølgen alene er
+  // ikke nok, fordi nye elementer i den rigtige version føjes til sidst uanset alder.
+  const portalVideos = [
+    { title: "Tonleiter C-dur — lektie", song: "Für Elise", ago: "2 dage siden", daysAgo: 2 },
+    { title: "Für Elise, første del", song: "Für Elise", ago: "16 dage siden", daysAgo: 16 },
+    { title: "Julekoncert — optagelse", song: "Andet", ago: "3 måneder siden", daysAgo: 90 },
+  ];
+  const UPCOMING_WINDOW = 8; // hvor mange kommende uger der vises — serien er åben, intet klippekort begrænser den
+
+  // Egne gennemførte lektioner, udledt af egen ugedag i stedet for en delt liste på tværs af
+  // elever (den findes kun på lærerens side) — samme klassificering (skal faktureres / faktureret).
+  function buildMyCompleted() {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return datesForWeekday(myAssignment.weekday, 5, 0)
+      .filter((iso) => iso !== todayIso)
+      .map((iso) => ({ date: iso, status: classifyByDate(iso) }))
+      .filter((e) => e.status === "tobill" || e.status === "billed")
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  // Egne fakturaer — i den rigtige version hentet fra egen konto/e-conomic-kunde.
+  const myInvoices = [
+    { period: "Juli 2026", lessons: 4, amount: 4 * LESSON_PRICE.Piano, status: "paid" },
+    { period: "Juni 2026", lessons: 3, amount: 3 * LESSON_PRICE.Piano, status: "sent" },
+  ];
+  const INVOICE_STATUS_LABEL = {
+    sent: '<span class="tag tag-sent">Sendt — afventer betaling</span>',
+    paid: '<span class="tag tag-done">Betalt</span>',
+  };
+
+  function renderPortal() {
+    document.getElementById("portal-fixed-time").textContent = WEEKDAYS_PLURAL[myAssignment.weekday] + " kl. " + myAssignment.start.slice(0, 5);
+    const firstUpcoming = nextOccurrenceDates(myAssignment.weekday, 1)[0];
+    document.getElementById("portal-next-note").innerHTML = "Næste gang er <b>" + formatDate(firstUpcoming) + "</b> — allerede i din Google-kalender.";
+
+    const upcoming = document.getElementById("portal-upcoming");
+    upcoming.innerHTML = "";
+    nextOccurrenceDates(myAssignment.weekday, UPCOMING_WINDOW).forEach((iso, i) => {
+      const row = document.createElement("div");
+      row.className = "divider-row";
+      row.innerHTML =
+        '<span class="mono-date">' + formatDate(iso) + "</span>" +
+        '<span class="mono-time" style="width:auto;">' + myAssignment.start.slice(0, 5) + "</span>" +
+        '<span class="row-title"><span class="name">' + myAssignment.instrument + "lektion</span></span>" +
+        (i === 0 ? '<span class="tag tag-pending">Næste</span>' : "");
+      upcoming.appendChild(row);
+    });
+
+    const completed = document.getElementById("portal-completed");
+    completed.innerHTML = "";
+    const myCompleted = buildMyCompleted();
+    if (myCompleted.length === 0) {
+      completed.innerHTML = '<p class="empty-state">Ingen gennemførte lektioner endnu.</p>';
+    } else {
+      myCompleted.forEach((e) => {
+        const row = document.createElement("div");
+        row.className = "divider-row";
+        row.innerHTML =
+          '<span class="mono-date">' + formatDate(e.date) + "</span>" +
+          '<span class="mono-time" style="width:auto;">' + myAssignment.start.slice(0, 5) + "</span>" +
+          '<span class="row-title"><span class="name">' + myAssignment.instrument + "lektion</span></span>" +
+          '<span class="tag tag-done">Gennemført</span>';
+        completed.appendChild(row);
+      });
+    }
+
+    // Fakturering fylder bevidst lidt her — kun en enkelt linje, resten af opmærksomheden
+    // går til sidste lektion og materiale (se nedenfor).
+    const myUnbilled = myCompleted.filter((e) => e.status === "tobill");
+    const invoiceTotal = myUnbilled.length * (LESSON_PRICE[myAssignment.instrument] || LESSON_PRICE.Piano);
+    document.getElementById("portal-invoice-total").textContent = formatKr(invoiceTotal);
+    document.getElementById("portal-invoice-note").textContent =
+      myUnbilled.length === 0
+        ? "Ingen ufakturerede lektioner endnu denne periode."
+        : myUnbilled.length + " lektion" + (myUnbilled.length === 1 ? "" : "er") + " indtil videre denne periode — sendes i starten af næste måned.";
+
+    const myInvList = document.getElementById("portal-invoices");
+    myInvList.innerHTML = "";
+    if (myInvoices.length === 0) {
+      myInvList.innerHTML = '<p class="empty-state">Ingen fakturaer endnu.</p>';
+    } else {
+      myInvoices.forEach((inv) => {
+        const row = document.createElement("div");
+        row.className = "invoice-row";
+        row.innerHTML =
+          '<span class="iname">' + inv.period + '<span class="iperiod">' + inv.lessons + " lektioner</span></span>" +
+          '<span class="iamount">' + formatKr(inv.amount) + "</span>" +
+          INVOICE_STATUS_LABEL[inv.status];
+        myInvList.appendChild(row);
+      });
+    }
+
+    // ── Fra sidste lektion: den nyeste besked fremhævet, resten bag et "se tidligere"-toggle ──
+    const sortedNotes = myNotes.slice().sort((a, b) => b.date.localeCompare(a.date));
+    const lastNoteEl = document.getElementById("portal-last-note");
+    const notesToggle = document.getElementById("portal-notes-toggle");
+    const notesHistory = document.getElementById("portal-notes-history");
+    if (sortedNotes.length === 0) {
+      lastNoteEl.innerHTML = '<p class="empty-state">Ingen beskeder endnu.</p>';
+      notesToggle.hidden = true;
+      notesHistory.hidden = true;
+    } else {
+      lastNoteEl.innerHTML =
+        '<div class="last-note-card"><p class="ln-date">' + formatDate(sortedNotes[0].date) + '</p><p class="ln-text">' + sortedNotes[0].summary + "</p></div>";
+      const older = sortedNotes.slice(1);
+      notesToggle.hidden = older.length === 0;
+      notesToggle.textContent = "Se tidligere beskeder (" + older.length + ")";
+      notesHistory.innerHTML = older
+        .map((n) => '<div class="divider-row"><span class="mono-date">' + formatDate(n.date) + '</span><span class="row-title" style="font-size:13.5px;">' + n.summary + "</span></div>")
+        .join("");
+    }
+    notesToggle.onclick = () => { notesHistory.hidden = !notesHistory.hidden; };
+
+    // ── Materiale fra Olle: de(t) 2 seneste fremhævet, alt andet bag et "se alt"-toggle ──
+    const sortedMedia = portalVideos.slice().sort((a, b) => (a.daysAgo || 0) - (b.daysAgo || 0));
+    const recentEl = document.getElementById("portal-recent-media");
+    const mediaToggle = document.getElementById("portal-media-toggle");
+    const allMediaEl = document.getElementById("portal-videos");
+    if (sortedMedia.length === 0) {
+      recentEl.innerHTML = '<p class="empty-state">Ingen videoer eller filer endnu.</p>';
+      mediaToggle.hidden = true;
+      allMediaEl.hidden = true;
+    } else {
+      recentEl.innerHTML = sortedMedia
+        .slice(0, 2)
+        .map((v) => '<div class="video-row"><span class="video-play">' + (v.type === "file" ? "📄" : "▶") + '</span><span class="video-info"><span class="vtitle">' + v.title + '</span><span class="vmeta">' + v.ago + "</span></span></div>")
+        .join("");
+      mediaToggle.hidden = false;
+      mediaToggle.textContent = "Se alt materiale (" + sortedMedia.length + ")";
+
+      const groups = {};
+      portalVideos.forEach((v) => (groups[v.song] = groups[v.song] || []).push(v));
+      const names = Object.keys(groups).filter((n) => n !== "Andet").sort();
+      if (groups["Andet"]) names.push("Andet");
+      allMediaEl.innerHTML = names
+        .map((song) =>
+          '<div class="song-group"><p class="song-name">' + song + "</p>" +
+          groups[song].map((v) => '<div class="video-row"><span class="video-play">' + (v.type === "file" ? "📄" : "▶") + '</span><span class="video-info"><span class="vtitle">' + v.title + '</span><span class="vmeta">' + v.ago + "</span></span></div>").join("") +
+          "</div>"
+        )
+        .join("");
+    }
+    mediaToggle.onclick = () => { allMediaEl.hidden = !allMediaEl.hidden; };
+  }
+
+  document.getElementById("portal-logout").addEventListener("click", () => {
+    state.elevAuthed = false;
+    state.authMode = "login";
+    updateNav();
+    switchView("signup");
+    toast("Logget ud.");
+  });
+
+  // Kalenderabonnement — et alternativ/supplement til den automatiske Google-invitation,
+  // til elever der bruger Apple Kalender, Outlook eller andet end Google selv.
+  document.getElementById("portal-subscribe-toggle").addEventListener("click", () => {
+    const panel = document.getElementById("portal-subscribe-panel");
+    panel.hidden = !panel.hidden;
+  });
+  document.getElementById("portal-subscribe-copy").addEventListener("click", async () => {
+    const link = document.getElementById("portal-subscribe-link").textContent;
+    try { await navigator.clipboard.writeText(link); } catch (e) { /* skitse uden rigtig udklipsholder-adgang her */ }
+    toast("Kalenderlink kopieret.");
+  });
+
+  // ───────────────────────── Init ─────────────────────────
+  renderSignup();
+  renderPortal();
+  updateNav();
+</script>
