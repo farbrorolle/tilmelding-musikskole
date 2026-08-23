@@ -296,7 +296,14 @@
   <!-- ═══════════════════════ I DAG ═══════════════════════ -->
   <section class="view active" id="view-today">
     <div class="wrap">
-      <div class="page-head"><h1>I dag — onsdag</h1><p>Skriv hurtige noter til hver elev uden at åbne siden — og når lektionen er slut, send en note til eleven og læg videoer og filer op.</p></div>
+      <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <div><h1>I dag — onsdag</h1><p>Skriv hurtige noter til hver elev uden at åbne siden — og når lektionen er slut, send en note til eleven og læg videoer og filer op.</p></div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-ghost btn-small" id="day-prev" aria-label="Forrige undervisningsdag">← Forrige</button>
+          <button class="btn-text" id="day-today" style="white-space:nowrap;">I dag</button>
+          <button class="btn btn-ghost btn-small" id="day-next" aria-label="Næste undervisningsdag">Næste →</button>
+        </div>
+      </div>
       <div id="today-list"></div>
     </div>
   </section>
@@ -395,6 +402,9 @@
   function addDays(n) { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
   function formatDate(iso) { const d = new Date(iso + "T00:00:00"); return d.toLocaleDateString("da-DK", { weekday: "short", day: "numeric", month: "short" }); }
   function todayWeekdayIdx() { const g = new Date().getDay(); return g === 0 || g === 6 ? -1 : g - 1; } // 0=Man..4=Fre, -1 = weekend
+  function weekdayIdxForIso(iso) { const g = new Date(iso + "T00:00:00").getDay(); return g === 0 || g === 6 ? -1 : g - 1; }
+  function isoAddDays(iso, delta) { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + delta); return d.toISOString().slice(0, 10); }
+  function isoToday() { return new Date().toISOString().slice(0, 10); }
   function datesForWeekday(weekdayIdx, weeksBack, weeksForward) {
     const targetDow = weekdayIdx + 1;
     const d = new Date();
@@ -430,6 +440,21 @@
     if (name === "today") renderToday();
     if (name === "teachdays") renderTeachDays();
   }
+
+  // "I dag" kan navigeres frem/tilbage dag for dag, så Olle kan forberede sig på
+  // den næste undervisningsdag i stedet for kun at se dagens (ofte tomme) dato.
+  document.getElementById("day-prev").addEventListener("click", () => {
+    state.todayViewIso = isoAddDays(state.todayViewIso || isoToday(), -1);
+    renderToday();
+  });
+  document.getElementById("day-next").addEventListener("click", () => {
+    state.todayViewIso = isoAddDays(state.todayViewIso || isoToday(), 1);
+    renderToday();
+  });
+  document.getElementById("day-today").addEventListener("click", () => {
+    state.todayViewIso = isoToday();
+    renderToday();
+  });
 
   // ═══════════════════════ AUTH / LOGIN GATE ═══════════════════════
   let session = null;
@@ -503,10 +528,12 @@
   let extraDays = [];       // extra_teaching_days
   let lessonPrices = {};
   let elevProfiles = [];    // profiles med role='elev' (student_id, invited_at) — bruges til kontostatus
+  let teacherNotes = [];    // teacher_notes — private noter, læreren ser dem, eleven kan aldrig se dem (egen tabel/RLS)
 
   const state = {
     draftAssignments: [],
     selectedDraftIds: new Set(),
+    todayViewIso: null,     // hvilken dag "I dag"-fanen viser lige nu — sat til dags dato ved opstart, kan navigeres frem/tilbage
   };
   let uid = 200;
   const nextId = () => "id" + (uid++);
@@ -514,12 +541,13 @@
   function studentById(id) { return students.find((s) => s.id === id); }
 
   async function loadAllData() {
-    const [{ data: wl }, { data: stu }, { data: asg }, { data: att }, { data: notes }, { data: media }, { data: cancelled }, { data: extra }, { data: prices }, { data: eprof }] = await Promise.all([
+    const [{ data: wl }, { data: stu }, { data: asg }, { data: att }, { data: notes }, { data: tnotes }, { data: media }, { data: cancelled }, { data: extra }, { data: prices }, { data: eprof }] = await Promise.all([
       sb.from("waitlist_signups").select("*").eq("status", "pending").order("created_at", { ascending: true }),
       sb.from("students").select("*"),
       sb.from("recurring_assignments").select("*").eq("status", "published"),
       sb.from("attendance_log").select("*"),
       sb.from("lesson_notes").select("*"),
+      sb.from("teacher_notes").select("*"),
       sb.from("lesson_media").select("*"),
       sb.from("cancelled_lesson_dates").select("*"),
       sb.from("extra_teaching_days").select("*"),
@@ -531,11 +559,13 @@
     assignments = (asg || []).map((a) => ({ ...a, student: studentById(a.student_id) })).filter((a) => a.student);
     attendanceLog = att || [];
     lessonNotes = notes || [];
+    teacherNotes = tnotes || [];
     lessonMedia = media || [];
     cancelledDates = cancelled || [];
     extraDays = extra || [];
     lessonPrices = Object.fromEntries((prices || []).map((p) => [p.instrument, p.price]));
     elevProfiles = eprof || [];
+    state.todayViewIso = isoToday();
   }
   async function refreshElevProfiles() {
     const { data } = await sb.from("profiles").select("student_id, invited_at").eq("role", "elev");
@@ -561,6 +591,10 @@
   async function refreshNotes() {
     const { data: notes } = await sb.from("lesson_notes").select("*");
     lessonNotes = notes || [];
+  }
+  async function refreshTeacherNotes() {
+    const { data: tnotes } = await sb.from("teacher_notes").select("*");
+    teacherNotes = tnotes || [];
   }
   async function refreshMedia() {
     const { data: media } = await sb.from("lesson_media").select("*");
@@ -797,15 +831,60 @@
       const toBill = toInvoiceCount(a.student_id);
       const row = document.createElement("div");
       row.className = "divider-row";
+      row.style.flexWrap = "wrap";
       row.innerHTML =
         '<span class="row-title"><span class="name">' + a.student.name + "</span>" +
         '<span class="tag tag-instr">' + (a.instrument || "") + "</span>" +
         '<span class="tag tag-recurring">' + slotLabel(a.weekday, a.start_time, a.end_time) + " hver uge</span>" +
         (toBill > 0 ? '<span class="tag tag-tobill">' + toBill + " til fakturering</span>" : "") + "</span>" +
-        '<span class="account-ctrl" style="white-space:nowrap;"></span>';
+        '<button class="btn-text edit-time-toggle">Rediger tid</button>' +
+        '<span class="account-ctrl" style="white-space:nowrap;"></span>' +
+        '<div class="assign-form" hidden style="flex-basis:100%;"></div>';
       wireAccountCtrl(row.querySelector(".account-ctrl"), a.student);
+      row.querySelector(".edit-time-toggle").addEventListener("click", () => {
+        const form = row.querySelector(".assign-form");
+        const isOpen = !form.hidden;
+        form.hidden = isOpen ? true : false;
+        if (!isOpen) {
+          form.innerHTML = buildEditAssignFormHtml(a);
+          wireEditAssignForm(form, a);
+        }
+      });
       list.appendChild(row);
     });
+  }
+
+  // Læreren skal kunne ændre en allerede oprettet fast tid i efterhand (ugedag,
+  // start/sluttid, instrument) — fx hvis en elev bytter dag. Opdaterer
+  // recurring_assignments direkte (ingen udkast/publicér-trin, da tiden allerede
+  // er live). Google Kalender-synk af selve ændringen er ikke koblet til endnu.
+  function buildEditAssignFormHtml(a) {
+    return (
+      '<label class="field" style="margin-top:0;"><span>Ugedag</span><select class="edit-weekday">' +
+      WEEKDAYS.map((d, i) => '<option value="' + i + '"' + (i === a.weekday ? " selected" : "") + ">" + d + "</option>").join("") +
+      "</select></label>" +
+      '<label class="field"><span>Starttid</span><input type="time" class="edit-start" value="' + a.start_time.slice(0, 5) + '"></label>' +
+      '<label class="field"><span>Sluttid</span><input type="time" class="edit-end" value="' + a.end_time.slice(0, 5) + '"></label>' +
+      '<label class="field"><span>Instrument</span><input type="text" class="edit-instrument" value="' + (a.instrument || "") + '"></label>' +
+      '<button class="btn btn-primary btn-small edit-save">Gem ændring</button>' +
+      '<button type="button" class="btn-text danger edit-cancel">Annullér</button>'
+    );
+  }
+  function wireEditAssignForm(form, a) {
+    form.querySelector(".edit-save").addEventListener("click", async () => {
+      const weekday = Number(form.querySelector(".edit-weekday").value);
+      const start = form.querySelector(".edit-start").value;
+      const end = form.querySelector(".edit-end").value;
+      const instrument = form.querySelector(".edit-instrument").value.trim() || "Andet";
+      if (!start || !end) { toast("Vælg start- og sluttid."); return; }
+      const { error } = await sb.from("recurring_assignments").update({ weekday, start_time: start, end_time: end, instrument }).eq("id", a.id);
+      if (error) { toast("Kunne ikke gemme ændringen: " + error.message); return; }
+      await refreshAssignmentsAndStudents();
+      renderActive();
+      renderToday();
+      toast("Undervisningstiden for " + a.student.name + " er opdateret.");
+    });
+    form.querySelector(".edit-cancel").addEventListener("click", () => { form.hidden = true; });
   }
 
   // ═══════════════════════ ELEVKONTO — opret + send invitation ═══════════════════════
@@ -1169,36 +1248,64 @@
   function studentColorKey(idx) { return STUDENT_COLOR_KEYS[idx % STUDENT_COLOR_KEYS.length]; }
   function initials(name) { return name.split(" ").filter(Boolean).map((p) => p[0]).join("").toUpperCase().slice(0, 2); }
 
-  function todaysLessons() {
-    const wd = todayWeekdayIdx();
+  function lessonsForDate(iso) {
+    const wd = weekdayIdxForIso(iso);
     if (wd < 0) return [];
-    const todayIso = new Date().toISOString().slice(0, 10);
-    if (isCancelled(todayIso)) return [];
+    if (isCancelled(iso)) return [];
     return assignments.filter((a) => a.weekday === wd);
   }
   function lastNoteFor(studentId) {
     const notes = lessonNotes.filter((n) => n.student_id === studentId).sort((a, b) => b.lesson_date.localeCompare(a.lesson_date));
     return notes[0] || null;
   }
-  function attendanceForToday(studentId) {
-    const todayIso = new Date().toISOString().slice(0, 10);
-    return attendanceLog.find((e) => e.student_id === studentId && e.lesson_date === todayIso) || null;
+  function lastTeacherNoteFor(studentId) {
+    const notes = teacherNotes.filter((n) => n.student_id === studentId).sort((a, b) => b.lesson_date.localeCompare(a.lesson_date));
+    return notes[0] || null;
+  }
+  function attendanceForDate(studentId, iso) {
+    return attendanceLog.find((e) => e.student_id === studentId && e.lesson_date === iso) || null;
+  }
+  // Finder næste dato (frem eller tilbage) inden for `maxDays` der rent faktisk har
+  // mindst én fast lektion — bruges af "◀ / ▶"-pilene så man ikke skal klikke sig
+  // igennem tomme weekenddage og aflyste dage en for en.
+  function findAdjacentTeachingDay(fromIso, direction, maxDays) {
+    let iso = fromIso;
+    for (let i = 0; i < maxDays; i++) {
+      iso = isoAddDays(iso, direction);
+      if (lessonsForDate(iso).length > 0) return iso;
+    }
+    return null;
   }
 
   function renderToday() {
     const el = document.getElementById("today-list");
-    const lessons = todaysLessons();
+    const viewIso = state.todayViewIso || isoToday();
+    const lessons = lessonsForDate(viewIso);
     const dayNames = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"];
-    document.querySelector("#view-today .page-head h1").textContent = "I dag — " + dayNames[new Date().getDay()];
+    const dLabel = new Date(viewIso + "T00:00:00");
+    const isRealToday = viewIso === isoToday();
+    const headingPrefix = isRealToday ? "I dag" : formatDate(viewIso);
+    document.querySelector("#view-today .page-head h1").textContent = headingPrefix + " — " + dayNames[dLabel.getDay()];
+    const todayBtn = document.getElementById("day-today");
+    if (todayBtn) todayBtn.hidden = isRealToday;
     el.innerHTML = "";
-    if (lessons.length === 0) { el.innerHTML = '<p class="empty-state">Ingen faste lektioner i dag.</p>'; return; }
+    if (lessons.length === 0) {
+      const nextDay = findAdjacentTeachingDay(viewIso, 1, 30);
+      el.innerHTML =
+        '<p class="empty-state">Ingen faste lektioner ' + (isRealToday ? "i dag" : "denne dag") + ".</p>" +
+        (nextDay ? '<p style="text-align:center;margin-top:10px;"><button class="btn-text" id="goto-next-teaching-day">Gå til næste undervisningsdag (' + formatDate(nextDay) + ")</button></p>" : "");
+      const gotoBtn = document.getElementById("goto-next-teaching-day");
+      if (gotoBtn) gotoBtn.addEventListener("click", () => { state.todayViewIso = nextDay; renderToday(); });
+      return;
+    }
 
     lessons.forEach((a, idx) => {
       const card = document.createElement("div");
       const colorKey = studentColorKey(idx);
       card.className = "lesson-card color-" + colorKey;
       const lastEntry = lastNoteFor(a.student_id);
-      const attendance = attendanceForToday(a.student_id);
+      const lastTeacherEntry = lastTeacherNoteFor(a.student_id);
+      const attendance = attendanceForDate(a.student_id, viewIso);
       const isDone = attendance && attendance.status === "done";
       card.innerHTML =
         '<div class="lesson-card-top"><span class="lesson-avatar color-' + colorKey + '">' + initials(a.student.name) + "</span>" +
@@ -1211,6 +1318,7 @@
         (a.student.current_focus ? '<p class="lesson-focus">' + a.student.current_focus + "</p>" : "") +
         '<div class="lesson-quicknote">' +
         (lastEntry ? '<p class="lesson-lastnote"><span class="ll-label">Sidste gang (' + formatDate(lastEntry.lesson_date) + ')</span>' + lastEntry.summary + "</p>" : "") +
+        (lastTeacherEntry ? '<p class="lesson-lastnote" style="opacity:0.85;"><span class="ll-label">Din private note (' + formatDate(lastTeacherEntry.lesson_date) + ')</span>' + lastTeacherEntry.note + "</p>" : "") +
         '<label class="field"><span>Note til i dag — hvad skal I kigge på?</span><textarea class="prep-note-inline" placeholder="F.eks. tempo på venstre hånd, ny etude, spørg om koncertnervøsitet …">' + (a.student.current_focus || "") + "</textarea></label>" +
         "</div>" +
         '<div class="lesson-card-detail" hidden></div>';
@@ -1226,7 +1334,7 @@
       function openLessonDetail() {
         detailEl.hidden = false;
         detailEl.innerHTML = buildLessonDetailHtml(a);
-        wireLessonDetail(detailEl, a);
+        wireLessonDetail(detailEl, a, viewIso);
         if (openBtn) openBtn.textContent = "Luk";
       }
       function closeLessonDetail() {
@@ -1255,10 +1363,21 @@
     const historyHtml = history.length
       ? history.map((h) => '<div class="divider-row" style="padding:9px 0;"><span class="mono-date">' + formatDate(h.lesson_date) + '</span><span class="row-title" style="font-size:13px;">' + h.summary + (h.sent_to_student ? ' <span class="tag tag-done" style="margin-left:6px;">Sendt til elev</span>' : "") + "</span></div>").join("")
       : '<p class="empty-state" style="padding:12px 0;">Ingen tidligere lektioner endnu.</p>';
+    const teacherHistory = teacherNotes.filter((n) => n.student_id === a.student_id).sort((x, y) => y.lesson_date.localeCompare(x.lesson_date));
+    const teacherHistoryHtml = teacherHistory.length
+      ? teacherHistory.map((h) => '<div class="divider-row" style="padding:9px 0;"><span class="mono-date">' + formatDate(h.lesson_date) + '</span><span class="row-title" style="font-size:13px;">' + h.note + "</span></div>").join("")
+      : '<p class="empty-state" style="padding:12px 0;">Ingen private noter endnu.</p>';
     return (
       '<label class="field" style="margin-top:0;"><span>Note til eleven — hvad har I arbejdet med i dag?</span><textarea class="student-note" placeholder="Skrives til eleven, når du registrerer fremmøde — vises på elevens egen side."></textarea></label>' +
       '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">' + (a.is_trial ? "Prøvelektion — tilføjes til fakturering separat." : "Tilføjes blandt lektioner der skal faktureres.") + "</p>" +
       '<button class="btn btn-primary btn-small register-attendance">Registrér fremmøde &amp; send note</button>' +
+      '<div style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--border);">' +
+      '<label class="field" style="margin-top:0;"><span>Privat note (kun til dig — eleven ser aldrig denne)</span><textarea class="teacher-note" placeholder="Til dig selv — fx hvad eleven kæmper med, hvad I skal huske til næste gang, forældrekontakt osv."></textarea></label>' +
+      '<button class="btn btn-ghost btn-small save-teacher-note">Gem privat note</button>' +
+      '<div style="margin-top:14px;">' +
+      '<button class="btn-text toggle-teacher-history">Se dine tidligere private noter (' + teacherHistory.length + ")</button>" +
+      '<div class="teacher-history-list" hidden style="margin-top:6px;">' + teacherHistoryHtml + "</div>" +
+      "</div></div>" +
       '<div style="margin-top:16px;">' +
       '<p style="font-size:11.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Send direkte til ' + a.student.name.split(" ")[0] + "</p>" +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
@@ -1279,8 +1398,10 @@
       "</div>"
     );
   }
-  function wireLessonDetail(detail, a) {
+  function wireLessonDetail(detail, a, viewIso) {
+    const lessonDateIso = viewIso || isoToday();
     const noteEl = detail.querySelector(".student-note");
+    const teacherNoteEl = detail.querySelector(".teacher-note");
     const histBtn = detail.querySelector(".toggle-history");
     if (histBtn) {
       histBtn.addEventListener("click", () => {
@@ -1288,19 +1409,37 @@
         histList.hidden = !histList.hidden;
       });
     }
+    const teacherHistBtn = detail.querySelector(".toggle-teacher-history");
+    if (teacherHistBtn) {
+      teacherHistBtn.addEventListener("click", () => {
+        const histList = detail.querySelector(".teacher-history-list");
+        histList.hidden = !histList.hidden;
+      });
+    }
+    detail.querySelector(".save-teacher-note").addEventListener("click", async () => {
+      const noteText = (teacherNoteEl ? teacherNoteEl.value : "").trim();
+      if (!noteText) { toast("Skriv en note først."); return; }
+      const { error } = await sb.from("teacher_notes").insert({ student_id: a.student_id, lesson_date: lessonDateIso, note: noteText });
+      if (error) { toast("Kunne ikke gemme den private note: " + error.message); return; }
+      teacherNoteEl.value = "";
+      await refreshTeacherNotes();
+      detail.innerHTML = buildLessonDetailHtml(a);
+      wireLessonDetail(detail, a, viewIso);
+      renderToday();
+      toast("Privat note gemt — eleven ser den aldrig.");
+    });
     detail.querySelector(".register-attendance").addEventListener("click", async () => {
-      const todayIso = new Date().toISOString().slice(0, 10);
       const price = lessonPrices[a.instrument] || lessonPrices["Andet"] || 0;
       const noteText = (noteEl ? noteEl.value : "").trim();
 
       const { error: attErr } = await sb.from("attendance_log").upsert(
-        { student_id: a.student_id, recurring_assignment_id: a.id, lesson_date: todayIso, status: "done", price_at_time: price },
+        { student_id: a.student_id, recurring_assignment_id: a.id, lesson_date: lessonDateIso, status: "done", price_at_time: price },
         { onConflict: "student_id,lesson_date" }
       );
       if (attErr) { toast("Kunne ikke registrere fremmøde: " + attErr.message); return; }
 
       if (noteText) {
-        const { error: noteErr } = await sb.from("lesson_notes").insert({ student_id: a.student_id, lesson_date: todayIso, summary: noteText, sent_to_student: true });
+        const { error: noteErr } = await sb.from("lesson_notes").insert({ student_id: a.student_id, lesson_date: lessonDateIso, summary: noteText, sent_to_student: true });
         if (noteErr) toast("Fremmøde registreret, men noten kunne ikke gemmes: " + noteErr.message);
       }
 
@@ -1315,11 +1454,11 @@
       const path = a.student_id + "/" + crypto.randomUUID() + "-" + file.name;
       const { error: upErr } = await sb.storage.from("lesson-media").upload(path, file);
       if (upErr) { toast("Upload fejlede: " + upErr.message); return; }
-      const { error: insErr } = await sb.from("lesson_media").insert({ student_id: a.student_id, lesson_date: new Date().toISOString().slice(0, 10), type, title: file.name, storage_path: path });
+      const { error: insErr } = await sb.from("lesson_media").insert({ student_id: a.student_id, lesson_date: lessonDateIso, type, title: file.name, storage_path: path });
       if (insErr) { toast("Filen blev uploadet, men kunne ikke gemmes: " + insErr.message); return; }
       await refreshMedia();
       detail.innerHTML = buildLessonDetailHtml(a);
-      wireLessonDetail(detail, a);
+      wireLessonDetail(detail, a, viewIso);
       toast((type === "video" ? "Video" : "Fil") + " tilføjet — læg gerne flere op, én ad gangen.");
     }
     const videoInput = detail.querySelector(".file-input-video");
