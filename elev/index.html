@@ -447,10 +447,15 @@
       return;
     }
 
+    // OBS (2026-08-23): "Opret bruger" (selv-registrering med kodeord) er midlertidigt
+    // skjult fra selve siden på Olles ønske — han opretter nu elevers konti selv fra
+    // /laerer og sender en separat invitation. Koden til signup-formularen nedenfor er
+    // bevidst IKKE slettet (kan skjules/vises igen), men intet i UI'et sætter længere
+    // state.authMode til "signup" — pillen peger i stedet direkte til /tilmelding/.
     const modeToggle =
-      '<div class="auth-toggle" role="tablist" aria-label="Log ind eller opret bruger">' +
+      '<div class="auth-toggle" role="tablist" aria-label="Log ind eller tilmeld dig">' +
       '<button type="button" class="authmode-btn' + (state.authMode === "login" ? " active" : "") + '" data-mode="login">Log ind</button>' +
-      '<button type="button" class="authmode-btn' + (state.authMode === "signup" ? " active" : "") + '" data-mode="signup">Opret bruger</button>' +
+      '<a class="authmode-btn" href="/tilmelding/">Tilmeld dig</a>' +
       "</div>";
 
     if (state.authMode === "login") {
@@ -462,11 +467,10 @@
         '<label class="field"><span>Adgangskode</span><input required type="password" id="l-password" placeholder="••••••••"></label>' +
         '<div id="login-error"></div>' +
         '<button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;">Log ind</button></form>' +
-        '<p style="margin-top:16px;font-size:13px;color:var(--ink-soft);">Ny hos os? <button type="button" class="btn-text" id="go-to-signup">Opret bruger og skriv dig op</button></p>' +
+        '<p style="margin-top:16px;font-size:13px;color:var(--ink-soft);">Ny hos os? <a class="btn-text" style="text-decoration:none;" href="/tilmelding/">Tilmeld dig</a></p>' +
         "</div>";
 
-      document.querySelectorAll(".authmode-btn").forEach((btn) => btn.addEventListener("click", () => { state.authMode = btn.dataset.mode; renderSignup(); }));
-      document.getElementById("go-to-signup").addEventListener("click", () => { state.authMode = "signup"; renderSignup(); });
+      document.querySelectorAll("button.authmode-btn[data-mode]").forEach((btn) => btn.addEventListener("click", () => { state.authMode = btn.dataset.mode; renderSignup(); }));
       document.getElementById("login-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const email = document.getElementById("l-email").value.trim();
@@ -509,7 +513,7 @@
       '<p style="margin-top:16px;font-size:13px;color:var(--ink-soft);">Har du allerede en bruger? <button type="button" class="btn-text" id="go-to-login">Log ind</button></p>' +
       "</div>";
 
-    document.querySelectorAll(".authmode-btn").forEach((btn) => btn.addEventListener("click", () => { state.authMode = btn.dataset.mode; renderSignup(); }));
+    document.querySelectorAll("button.authmode-btn[data-mode]").forEach((btn) => btn.addEventListener("click", () => { state.authMode = btn.dataset.mode; renderSignup(); }));
     document.getElementById("go-to-login").addEventListener("click", () => { state.authMode = "login"; renderSignup(); });
 
     const picker = document.getElementById("slot-picker");
