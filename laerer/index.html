@@ -322,6 +322,8 @@
         <div class="section-label"><span>Venteliste</span><span class="count-chip" id="waitlist-count">0</span></div>
         <p class="section-sub">I den rækkefølge eleverne har skrevet sig op.</p>
         <div id="waitlist-list"></div>
+        <button class="btn-text" id="add-student-toggle" style="margin-top:14px;">+ Tilføj elev direkte (uden venteliste)</button>
+        <div id="add-student-form" hidden></div>
       </div>
 
       <div class="panel">
@@ -634,6 +636,55 @@
       });
       renderPlanning();
       toast(signup.navn + " tilføjet til skema-udkastet — intet oprettet endnu.");
+    });
+  }
+
+  function buildAddStudentFormHtml() {
+    return (
+      '<label class="field" style="margin-top:0;"><span>Navn</span><input type="text" class="new-student-name"></label>' +
+      '<label class="field"><span>Mailadresse</span><input type="email" class="new-student-email"></label>' +
+      '<label class="field"><span>Telefon</span><input type="tel" class="new-student-phone"></label>' +
+      '<label class="field"><span>Ugedag</span><select class="new-student-weekday">' +
+      WEEKDAYS.map((d, i) => '<option value="' + i + '">' + d + "</option>").join("") +
+      "</select></label>" +
+      '<label class="field"><span>Starttid</span><input type="time" class="new-student-start" value="15:00"></label>' +
+      '<label class="field"><span>Sluttid</span><input type="time" class="new-student-end" value="15:45"></label>' +
+      '<label class="field"><span>Instrument</span><input type="text" class="new-student-instrument"></label>' +
+      '<label class="check"><input type="checkbox" class="new-student-trial"> Prøvelektion (kun denne gang)</label>' +
+      '<button class="btn btn-primary btn-small new-student-submit">Læg i udkast</button>'
+    );
+  }
+
+  document.getElementById("add-student-toggle").addEventListener("click", () => {
+    const form = document.getElementById("add-student-form");
+    const isOpen = !form.hidden;
+    form.hidden = isOpen ? true : false;
+    if (!isOpen) {
+      form.innerHTML = buildAddStudentFormHtml();
+      wireAddStudentForm(form);
+    }
+  });
+
+  function wireAddStudentForm(form) {
+    form.querySelector(".new-student-submit").addEventListener("click", () => {
+      const name = form.querySelector(".new-student-name").value.trim();
+      const email = form.querySelector(".new-student-email").value.trim();
+      const phone = form.querySelector(".new-student-phone").value.trim();
+      const weekday = Number(form.querySelector(".new-student-weekday").value);
+      const start = form.querySelector(".new-student-start").value;
+      const end = form.querySelector(".new-student-end").value;
+      const instrument = form.querySelector(".new-student-instrument").value.trim() || "Andet";
+      const isTrial = form.querySelector(".new-student-trial").checked;
+      if (!name || !email) { toast("Udfyld i det mindste navn og mail."); return; }
+      if (!start || !end) { toast("Vælg start- og sluttid."); return; }
+
+      state.draftAssignments.push({
+        id: nextId(), name, email, phone, instrument,
+        weekday, start, end, isTrial, waitlistId: null,
+      });
+      renderPlanning();
+      document.getElementById("add-student-form").hidden = true;
+      toast(name + " tilføjet til skema-udkastet — intet oprettet endnu.");
     });
   }
 
