@@ -570,7 +570,11 @@
       sb.from("cancelled_lesson_dates").select("*"),
       sb.from("extra_teaching_days").select("*"),
       sb.from("lesson_prices").select("*"),
-      sb.from("profiles").select("student_id, invited_at").eq("role", "elev"),
+      // OBS (2026-08-23): kontostatus slås nu op via account_students, ikke
+      // profiles.student_id direkte — siden søskende kan dele ét login, er
+      // profiles.student_id kun den "primære" elev for kontoen, og ville
+      // vise "ingen konto" for en elev der reelt deler login med en søskende.
+      sb.from("account_students").select("student_id, profiles(invited_at)"),
     ]);
     waitlist = wl || [];
     students = stu || [];
@@ -582,12 +586,12 @@
     cancelledDates = cancelled || [];
     extraDays = extra || [];
     lessonPrices = Object.fromEntries((prices || []).map((p) => [p.instrument, p.price]));
-    elevProfiles = eprof || [];
+    elevProfiles = (eprof || []).map((r) => ({ student_id: r.student_id, invited_at: r.profiles ? r.profiles.invited_at : null }));
     state.todayViewIso = isoToday();
   }
   async function refreshElevProfiles() {
-    const { data } = await sb.from("profiles").select("student_id, invited_at").eq("role", "elev");
-    elevProfiles = data || [];
+    const { data } = await sb.from("account_students").select("student_id, profiles(invited_at)");
+    elevProfiles = (data || []).map((r) => ({ student_id: r.student_id, invited_at: r.profiles ? r.profiles.invited_at : null }));
   }
   function profileForStudent(studentId) { return elevProfiles.find((p) => p.student_id === studentId); }
   async function refreshAssignmentsAndStudents() {
@@ -791,37 +795,60 @@
     const btn = document.getElementById("publish-btn");
     btn.disabled = true;
 
-    // VIGTIGT (2026-08-23): elever findes/oprettes ud fra mail, og `students.email`
-    // er unik i databasen — så hvis den indtastede mail allerede tilhører en anden
-    // elev (fx samme mail brugt til to søskende, eller en tastefejl), blev den nye
-    // faste tid tidligere lagt STILLE ind under den EKSISTERENDE elevs navn, uden at
-    // nogen ny elev nogensinde blev oprettet. Det så ud som om personen "forsvandt",
-    // fordi succes-beskeden nævnte det nye navn, men raden i databasen tilhørte det
-    // gamle navn. Nu spørges der eksplicit før noget lægges under en anden elev end
-    // den man er ved at oprette.
+    // VIGTIGT (2026-08-23): elever findes/oprettes ud fra mail. `students.email`
+    // er IKKE længere unik (søskende må gerne dele mailadresse — se migrationen
+    // "multi_student_accounts"), så hvis den indtastede mail allerede tilhører en
+    // anden elev, spørges der om det er samme person (fx en tidligere tastefejl i
+    // navnet, som skal rettes) eller en ny person (fx en søskende) — i så fald
+    // oprettes en helt separat elevrække, og hvis den mail allerede har et login,
+    // kobles den nye elev straks ind på samme konto (account_students), så
+    // familien kan se begge/alle børn med det samme.
+    //
+    // Tidligere lagde koden altid den nye tid STILLE ind under den EKSISTERENDE
+    // elevs navn ved mail-kollision, uden at nogen ny elev nogensinde blev
+    // oprettet — det så ud som om personen "forsvandt" ("Pippi forsvandt"-fejlen).
     const succeededIds = new Set();
     const messages = [];
 
     for (const a of toPublish) {
       let studentId = null;
       let mergedInto = null;
+      let sharedWith = null;
       const { data: existing } = await sb.from("students").select("id,name").eq("email", a.email).maybeSingle();
-      if (existing) {
-        if (existing.name !== a.name) {
-          const proceed = confirm(
-            "Mailadressen " + a.email + " er allerede registreret som eleven “" + existing.name + "” i systemet.\n\n" +
-            "Tryk OK for at tilføje denne faste tid til " + existing.name + " (der oprettes IKKE en ny, separat elev ved navn “" + a.name + "”).\n" +
-            "Tryk Annullér for at springe " + a.name + " over — brug i stedet en anden mailadresse, hvis det er en ny elev."
-          );
-          if (!proceed) { messages.push(a.name + ": sprunget over (mailen tilhører allerede " + existing.name + ")"); continue; }
+      if (existing && existing.name !== a.name) {
+        const sameSame = confirm(
+          "Mailadressen " + a.email + " er allerede registreret som eleven “" + existing.name + "” i systemet.\n\n" +
+          "Tryk OK hvis “" + a.name + "” og “" + existing.name + "” er SAMME PERSON (fx en tidligere tastefejl i navnet) — så bruges den eksisterende elevs data.\n" +
+          "Tryk Annullér hvis det er en ANDEN PERSON (fx en søskende, der bruger samme mailadresse) — så oprettes en ny, separat elev, der deler login med " + existing.name + "."
+        );
+        if (sameSame) {
           mergedInto = existing.name;
+          studentId = existing.id;
+        } else {
+          const { data: newStu, error } = await sb.from("students").insert({ name: a.name, email: a.email, phone: a.phone, instrument_onske: a.instrument }).select().single();
+          if (error) { toast("Kunne ikke oprette elev " + a.name + ": " + error.message); continue; }
+          studentId = newStu.id;
+          sharedWith = existing.name;
         }
+      } else if (existing) {
         studentId = existing.id;
       } else {
         const { data: newStu, error } = await sb.from("students").insert({ name: a.name, email: a.email, phone: a.phone, instrument_onske: a.instrument }).select().single();
         if (error) { toast("Kunne ikke oprette elev " + a.name + ": " + error.message); continue; }
         studentId = newStu.id;
       }
+
+      // Ny elev der deler mail med en, der allerede har et login — kobl straks
+      // ind på samme konto, så familien ikke selv skal bede om det bagefter.
+      if (sharedWith) {
+        try {
+          const { data: existingProfile } = await sb.from("profiles").select("id").eq("email", a.email).maybeSingle();
+          if (existingProfile) await sb.from("account_students").insert({ profile_id: existingProfile.id, student_id: studentId });
+        } catch (linkErr) {
+          console.error("Kunne ikke koble ny elev til eksisterende login:", linkErr);
+        }
+      }
+
       const { error: asgErr } = await sb.from("recurring_assignments").insert({
         student_id: studentId, weekday: a.weekday, start_time: a.start, end_time: a.end,
         instrument: a.instrument, is_trial: a.isTrial, status: "published", published_at: new Date().toISOString(),
@@ -829,7 +856,11 @@
       if (asgErr) { toast("Kunne ikke oprette fast tid for " + a.name + ": " + asgErr.message); continue; }
       if (a.waitlistId) await sb.from("waitlist_signups").update({ status: "assigned" }).eq("id", a.waitlistId);
       succeededIds.add(a.id);
-      messages.push(mergedInto ? "Fast tid for " + a.name + " tilføjet til " + mergedInto + "s skema" : a.name + ": fast tid oprettet");
+      messages.push(
+        mergedInto ? "Fast tid for " + a.name + " tilføjet til " + mergedInto + "s skema" :
+        sharedWith ? a.name + ": fast tid oprettet (deler login med " + sharedWith + ")" :
+        a.name + ": fast tid oprettet"
+      );
     }
 
     // Kun de rader der rent faktisk lykkedes fjernes fra udkastet — springes en
@@ -962,14 +993,23 @@
       const res = await fetch("/api/create-student-account", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-        body: JSON.stringify({ email: student.email, name: student.name, phone: student.phone, instrument: student.instrument_onske }),
+        body: JSON.stringify({ email: student.email, name: student.name, phone: student.phone, instrument: student.instrument_onske, student_id: student.id }),
       });
       data = await res.json();
     } catch (err) {
       toast("Kunne ikke oprette konto — prøv igen.");
     }
     if (data && data.ok) {
-      toast(data.already_existed ? (student.name + " har allerede en konto.") : ("Konto oprettet for " + student.name + " — ingen mail sendt endnu."));
+      // linked_to_existing_account: mailen tilhørte allerede en søskendes
+      // konto — i stedet for at fejle er den nye elev nu koblet ind på
+      // samme login (account_students), så familien ser begge børn.
+      toast(
+        data.linked_to_existing_account
+          ? (student.name + " er koblet på den eksisterende konto for " + student.email + ".")
+          : data.already_existed
+          ? (student.name + " har allerede en konto.")
+          : ("Konto oprettet for " + student.name + " — ingen mail sendt endnu.")
+      );
     } else if (data) {
       toast("Kunne ikke oprette konto: " + (data.error || "ukendt fejl"));
     }
