@@ -83,6 +83,9 @@
   .field input, .field textarea, .field select { width: 100%; font-family: inherit; font-size: 14.5px; color: var(--ink); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
   .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
   .field textarea { resize: vertical; min-height: 64px; font-family: inherit; }
+  .field input[type="date"] { cursor: pointer; }
+  .field input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; filter: invert(0.85); opacity: 0.9; }
+  .field input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: none; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; padding: 12px 22px; transition: transform 0.1s ease, background 0.15s ease, opacity 0.15s ease; }
   .btn:active { transform: scale(0.98); }
@@ -262,6 +265,7 @@
     <div class="tabs" role="tablist" aria-label="Vis side">
       <button class="tab-btn active" data-tab="planning" role="tab" aria-selected="true" id="tab-btn-planning">Planlægning</button>
       <button class="tab-btn" data-tab="today" role="tab" aria-selected="false" id="tab-btn-today">I dag</button>
+      <button class="tab-btn" data-tab="teachdays" role="tab" aria-selected="false" id="tab-btn-teachdays">Undervisningsdage</button>
     </div>
   </div>
 </header>
@@ -271,14 +275,6 @@
   <section class="view active" id="view-planning">
     <div class="wrap">
       <div class="page-head"><h1>Planlægning</h1><p>Tildel faste tider i ro og mag — intet oprettes i Google Kalender, før du udgiver.</p></div>
-
-      <div class="panel">
-        <div class="section-label"><span>Undervisningsdage</span><span class="count-chip" id="teachdays-count">0</span></div>
-        <p class="section-sub">Hurtigt overblik over hvilke dage du underviser fremover. Aflys en hel dag med ét klik — alle berørte elever får en mail, som du kan redigere for denne ene gang, før den sendes. Eller opret en ekstra undervisningsdag ud over det faste skema — så sendes individuelle kalenderinvitationer til de valgte elever.</p>
-        <div id="teachdays-list"></div>
-        <button class="btn-text" id="add-teachday-toggle" style="margin-top:14px;">+ Opret ekstra undervisningsdag</button>
-        <div id="add-teachday-form" hidden></div>
-      </div>
 
       <div class="panel">
         <div class="section-label"><span>Venteliste</span><span class="count-chip" id="waitlist-count">0</span></div>
@@ -331,6 +327,20 @@
       <div id="today-list"></div>
     </div>
   </section>
+
+  <!-- ═══════════════════════ UNDERVISNINGSDAGE ═══════════════════════ -->
+  <section class="view" id="view-teachdays">
+    <div class="wrap">
+      <div class="page-head"><h1>Undervisningsdage</h1><p>Bruges sjældent — typisk ved terminstart eller når elevholdet ændrer sig. Hurtigt overblik over hvilke dage du underviser fremover. Aflys en hel dag med ét klik — alle berørte elever får en mail, som du kan redigere for denne ene gang, før den sendes. Eller opret en ekstra undervisningsdag ud over det faste skema — så sendes individuelle kalenderinvitationer til de valgte elever.</p></div>
+
+      <div class="panel">
+        <div class="section-label"><span>Undervisningsdage</span><span class="count-chip" id="teachdays-count">0</span></div>
+        <div id="teachdays-list"></div>
+        <button class="btn-text" id="add-teachday-toggle" style="margin-top:14px;">+ Opret ekstra undervisningsdag</button>
+        <div id="add-teachday-form" hidden></div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer class="site">Skitse til lærerens værktøjer · Planlægning og I dag, samme datamodel som backend-koden på /tilmelding.<br><span style="display:inline-block;margin-top:6px;">Kommentarer og ønsker til flow eller indhold modtages meget gerne, før den kobles til rigtig database og Google Kalender.</span></footer>
@@ -360,7 +370,7 @@
   // ───────────────────────── Faner ─────────────────────────
   document.querySelectorAll(".tab-btn").forEach((btn) => btn.addEventListener("click", () => switchView(btn.dataset.tab)));
   function switchView(name) {
-    ["planning", "today"].forEach((v) => document.getElementById("view-" + v).classList.toggle("active", v === name));
+    ["planning", "today", "teachdays"].forEach((v) => document.getElementById("view-" + v).classList.toggle("active", v === name));
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       const active = btn.dataset.tab === name;
       btn.classList.toggle("active", active);
@@ -368,6 +378,7 @@
     });
     if (name === "planning") renderPlanning();
     if (name === "today") renderToday();
+    if (name === "teachdays") renderTeachDays();
   }
 
   // ═══════════════════════ STATE ═══════════════════════
@@ -402,7 +413,6 @@
 
   // ═══════════════════════ PLANLÆGNING ═══════════════════════
   function renderPlanning() {
-    renderTeachDays();
     renderWaitlist();
     renderDrafts();
     renderWeekGrid();
@@ -537,6 +547,9 @@
   }
   function wireCreateDayForm(form) {
     const dateInput = form.querySelector(".create-day-date");
+    dateInput.addEventListener("click", () => {
+      try { if (dateInput.showPicker) dateInput.showPicker(); } catch (e) { /* ignore — falder tilbage til normal indtastning */ }
+    });
     const selectAll = form.querySelector(".create-day-select-all");
     const studentBoxes = Array.from(form.querySelectorAll(".create-day-student"));
     const sendMailBox = form.querySelector(".create-day-send-mail");
@@ -1118,4 +1131,5 @@
   // ───────────────────────── Init ─────────────────────────
   renderPlanning();
   renderToday();
+  renderTeachDays();
 </script>
