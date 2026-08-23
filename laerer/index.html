@@ -125,6 +125,9 @@
   .day-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .day-date { font-size: 14.5px; font-weight: 600; }
   .day-sub { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+  .day-goto { display: block; text-align: left; background: none; border: none; padding: 4px 6px; margin: -4px -6px; border-radius: 8px; cursor: pointer; font: inherit; color: inherit; }
+  .day-goto:hover, .day-goto:focus-visible { background: var(--border-soft); }
+  .day-goto:hover .day-sub, .day-goto:focus-visible .day-sub { color: var(--accent); }
   .day-students { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .day-student-chip { font-size: 11.5px; padding: 3px 9px; border-radius: 999px; background: var(--border-soft); color: var(--ink-soft); }
   .cancel-form, .create-day-form { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
@@ -399,12 +402,27 @@
       setTimeout(() => el.remove(), 250);
     }, 3600);
   }
-  function addDays(n) { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+  // VIGTIGT (2026-08-23): brug ALDRIG Date#toISOString() til at lave en
+  // "YYYY-MM-DD"-dato ud fra en lokal Date — toISOString() konverterer altid
+  // til UTC, og for en tidszone der ligger foran UTC (som Danmark, UTC+1/+2)
+  // ruller det lokale midnat tilbage til dagen FØR i UTC. Det gjorde bl.a. at
+  // isoAddDays(iso, +1) returnerede den samme dato igen og igen for danske
+  // brugere (aldrig kom videre), og at datesForWeekday/nextOccurrenceDates
+  // altid viste én dag for tidligt (mandag blev vist som søndag, osv.).
+  // toIsoLocal() bruger i stedet Dates egne lokale getFullYear/getMonth/
+  // getDate — ingen UTC-konvertering, ingen forskydning.
+  function toIsoLocal(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+  function addDays(n) { const d = new Date(); d.setDate(d.getDate() + n); return toIsoLocal(d); }
   function formatDate(iso) { const d = new Date(iso + "T00:00:00"); return d.toLocaleDateString("da-DK", { weekday: "short", day: "numeric", month: "short" }); }
   function todayWeekdayIdx() { const g = new Date().getDay(); return g === 0 || g === 6 ? -1 : g - 1; } // 0=Man..4=Fre, -1 = weekend
   function weekdayIdxForIso(iso) { const g = new Date(iso + "T00:00:00").getDay(); return g === 0 || g === 6 ? -1 : g - 1; }
-  function isoAddDays(iso, delta) { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + delta); return d.toISOString().slice(0, 10); }
-  function isoToday() { return new Date().toISOString().slice(0, 10); }
+  function isoAddDays(iso, delta) { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + delta); return toIsoLocal(d); }
+  function isoToday() { return toIsoLocal(new Date()); }
   function datesForWeekday(weekdayIdx, weeksBack, weeksForward) {
     const targetDow = weekdayIdx + 1;
     const d = new Date();
@@ -415,7 +433,7 @@
     for (let w = -weeksBack; w <= weeksForward; w++) {
       const dt = new Date(base);
       dt.setDate(dt.getDate() + w * 7);
-      dates.push(dt.toISOString().slice(0, 10));
+      dates.push(toIsoLocal(dt));
     }
     return dates;
   }
@@ -837,6 +855,11 @@
         '<span class="tag tag-instr">' + (a.instrument || "") + "</span>" +
         '<span class="tag tag-recurring">' + slotLabel(a.weekday, a.start_time, a.end_time) + " hver uge</span>" +
         (toBill > 0 ? '<span class="tag tag-tobill">' + toBill + " til fakturering</span>" : "") + "</span>" +
+        // Kontaktoplysninger vist direkte her (ikke kun inde på "I dag"s
+        // lektionskort), så Olle kan finde en elevs mail/telefon uden at
+        // skulle vente på selve undervisningsdagen.
+        (a.student.phone ? '<a class="btn-text" style="text-decoration:none;" href="tel:' + a.student.phone + '">📞 ' + a.student.phone + "</a>" : "") +
+        '<a class="btn-text" style="text-decoration:none;" href="mailto:' + a.student.email + '">✉ ' + a.student.email + "</a>" +
         '<button class="btn-text edit-time-toggle">Rediger tid</button>' +
         '<span class="account-ctrl" style="white-space:nowrap;"></span>' +
         '<div class="assign-form" hidden style="flex-basis:100%;"></div>';
@@ -963,7 +986,7 @@
   function isCancelled(iso) { return cancelledDates.some((c) => c.lesson_date === iso); }
   function classifyDate(studentId, iso) {
     if (isCancelled(iso)) return "cancelled";
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const todayIso = isoToday();
     if (iso > todayIso) return "upcoming";
     const log = attendanceLog.find((e) => e.student_id === studentId && e.lesson_date === iso);
     if (log) {
@@ -1001,7 +1024,7 @@
     const gridStart = new Date(firstOfMonth);
     gridStart.setDate(gridStart.getDate() - startOffset);
     const totalCells = Math.ceil((startOffset + lastOfMonth.getDate()) / 7) * 7;
-    const todayIso = today.toISOString().slice(0, 10);
+    const todayIso = toIsoLocal(today);
 
     ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"].forEach((d) => {
       const el = document.createElement("div");
@@ -1013,7 +1036,7 @@
     for (let i = 0; i < totalCells; i++) {
       const d = new Date(gridStart);
       d.setDate(d.getDate() + i);
-      const iso = d.toISOString().slice(0, 10);
+      const iso = toIsoLocal(d);
       const inMonth = d.getMonth() === month;
       const cell = document.createElement("div");
       cell.className = "cal-cell" + (inMonth ? "" : " out") + (iso === todayIso ? " today" : "");
@@ -1058,7 +1081,7 @@
     document.getElementById("stat-billed").textContent = events.filter((e) => e.status === "billed").length;
     document.getElementById("stat-cancelled").textContent = events.filter((e) => e.status === "cancelled").length;
 
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const todayIso = isoToday();
     const nearbyEvents = events.filter((e) => Math.abs((new Date(e.date + "T00:00:00") - new Date(todayIso + "T00:00:00")) / 86400000) <= 10);
     const list = document.getElementById("reconciliation-list");
     list.innerHTML = "";
@@ -1081,7 +1104,7 @@
   // ═══════════════════════ UNDERVISNINGSDAGE ═══════════════════════
   function buildUpcomingTeachDays(count) {
     const map = {};
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const todayIso = isoToday();
     assignments.forEach((a) => {
       datesForWeekday(a.weekday, 0, 8).forEach((iso) => {
         if (iso < todayIso) return;
@@ -1122,14 +1145,25 @@
       row.className = "day-row" + (cancelled ? " cancelled" : "");
       row.innerHTML =
         '<div class="day-top">' +
-        '<div><p class="day-date">' + formatDate(day.date) + (day.extra ? '<span class="tag tag-instr" style="margin-left:8px;">Ekstra dag</span>' : "") + "</p>" +
-        '<p class="day-sub">' + day.students.length + " lektion" + (day.students.length === 1 ? "" : "er") + "</p></div>" +
+        '<button type="button" class="day-goto" title="Gå til denne dag i \'I dag\'"><p class="day-date">' + formatDate(day.date) + (day.extra ? '<span class="tag tag-instr" style="margin-left:8px;">Ekstra dag</span>' : "") + "</p>" +
+        '<p class="day-sub">' + day.students.length + " lektion" + (day.students.length === 1 ? "" : "er") + " · gå til dagen →</p></button>" +
         (cancelled
           ? '<span class="tag tag-cancelled">Aflyst</span>'
           : '<button class="btn-text danger cancel-day-toggle">Aflys denne dag</button>') +
         "</div>" +
         '<div class="day-students">' + day.students.map((s) => '<span class="day-student-chip">' + s.name + " · " + s.time + "</span>").join("") + "</div>" +
         '<div class="cancel-form" hidden></div>';
+
+      // Klik på selve datoen/blokken hopper direkte til "I dag" for netop den
+      // dag — Olle bad om ikke at skulle klikke sig igennem tomme dage med
+      // ← Forrige/Næste → for at nå en bestemt planlagt undervisningsdag.
+      const gotoBtn = row.querySelector(".day-goto");
+      if (gotoBtn) {
+        gotoBtn.addEventListener("click", () => {
+          state.todayViewIso = day.date;
+          switchView("today");
+        });
+      }
 
       const toggleBtn = row.querySelector(".cancel-day-toggle");
       if (toggleBtn) {
