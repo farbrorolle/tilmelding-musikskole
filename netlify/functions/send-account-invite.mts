@@ -120,17 +120,30 @@ export default async (req: Request) => {
     // Marker hvornår invitationen blev sendt, så læreren kan se det i /laerer.
     // Fejler dette, skal det ikke fremstå som at hele invitationen fejlede —
     // mailen er jo allerede sendt på dette tidspunkt.
+    //
+    // OBS (2026-08-23): kan ikke længere bare slå op på profiles.student_id —
+    // siden søskende kan dele ét login (account_students), er den kolonne kun
+    // den "primære" elev for kontoen. Slår derfor koblingen op via
+    // account_students i stedet, så invited_at også opdateres korrekt for en
+    // elev der deler login med en søskende.
     try {
-      await fetch(`${supabaseUrl}/rest/v1/profiles?student_id=eq.${studentId}`, {
-        method: "PATCH",
-        headers: {
-          apikey: serviceKey,
-          Authorization: `Bearer ${serviceKey}`,
-          "Content-Type": "application/json",
-          Prefer: "return=minimal",
-        },
-        body: JSON.stringify({ invited_at: new Date().toISOString() }),
+      const linkRes = await fetch(`${supabaseUrl}/rest/v1/account_students?student_id=eq.${studentId}&select=profile_id`, {
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
       });
+      const links = await linkRes.json().catch(() => []);
+      const profileId = Array.isArray(links) && links[0]?.profile_id;
+      if (profileId) {
+        await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${profileId}`, {
+          method: "PATCH",
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ invited_at: new Date().toISOString() }),
+        });
+      }
     } catch (err) {
       console.error("Kunne ikke opdatere invited_at:", err);
     }

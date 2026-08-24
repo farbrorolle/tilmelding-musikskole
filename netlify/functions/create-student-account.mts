@@ -69,6 +69,12 @@ export default async (req: Request) => {
   const name = typeof body.name === "string" && body.name.trim() ? body.name.trim() : undefined;
   const phone = typeof body.phone === "string" && body.phone.trim() ? body.phone.trim() : undefined;
   const instrument = typeof body.instrument === "string" && body.instrument.trim() ? body.instrument.trim() : undefined;
+  // OBS (2026-08-23): siden students.email ikke længere er unik (søskende må
+  // gerne dele mailadresse — se migrationen "multi_student_accounts"), skal
+  // vi eksplicit fortælle databasetriggeren handle_new_user() hvilken
+  // students-række denne konto hører til. Uden dette ville et nyt login for
+  // en allerede oprettet elev fejlagtigt oprette en helt ny, tom elevrække.
+  const studentId = typeof body.student_id === "string" && body.student_id.trim() ? body.student_id.trim() : undefined;
 
   try {
     const res = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
@@ -81,16 +87,43 @@ export default async (req: Request) => {
       body: JSON.stringify({
         email,
         email_confirm: true,
-        user_metadata: { name, phone, instrument_onske: instrument },
+        user_metadata: { name, phone, instrument_onske: instrument, student_id: studentId },
       }),
     });
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       const msg = typeof data?.msg === "string" ? data.msg : typeof data?.message === "string" ? data.message : "";
-      // Kontoen findes allerede (fx fordi eleven selv har oprettet en bruger
-      // tidligere via /elev) — det er ikke en fejl for os, bare en oplysning.
+      // Mailen har allerede en konto — typisk fordi en søskende med samme
+      // mailadresse allerede har fået oprettet login. I stedet for bare at
+      // melde "findes allerede" og ikke gøre mere (som tidligere), kobles
+      // denne elev nu direkte ind på den eksisterende konto via
+      // account_students, så familien kan se begge/alle børn med samme login.
       if (res.status === 422 || res.status === 400 || /already.*registered/i.test(msg)) {
+        if (studentId) {
+          try {
+            const profRes = await fetch(`${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(email)}&select=id`, {
+              headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+            });
+            const profRows = await profRes.json().catch(() => []);
+            const existingProfileId = Array.isArray(profRows) && profRows[0]?.id;
+            if (existingProfileId) {
+              await fetch(`${supabaseUrl}/rest/v1/account_students`, {
+                method: "POST",
+                headers: {
+                  apikey: serviceKey,
+                  Authorization: `Bearer ${serviceKey}`,
+                  "Content-Type": "application/json",
+                  Prefer: "resolution=merge-duplicates,return=minimal",
+                },
+                body: JSON.stringify({ profile_id: existingProfileId, student_id: studentId }),
+              });
+              return new Response(JSON.stringify({ ok: true, already_existed: true, linked_to_existing_account: true }), { status: 200 });
+            }
+          } catch (linkErr) {
+            console.error("Kunne ikke koble elev til eksisterende konto:", linkErr);
+          }
+        }
         return new Response(JSON.stringify({ ok: true, already_existed: true }), { status: 200 });
       }
       console.error("Supabase admin createUser fejl:", res.status, data);
