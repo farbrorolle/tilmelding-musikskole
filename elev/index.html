@@ -505,9 +505,9 @@
     // bevidst IKKE slettet (kan skjules/vises igen), men intet i UI'et sætter længere
     // state.authMode til "signup" — pillen peger i stedet direkte til /tilmelding/.
     const modeToggle =
-      '<div class="auth-toggle" role="tablist" aria-label="Log ind eller tilmeld dig">' +
+      '<div class="auth-toggle" role="tablist" aria-label="Log ind eller skriv dig op">' +
       '<button type="button" class="authmode-btn' + (state.authMode === "login" ? " active" : "") + '" data-mode="login">Log ind</button>' +
-      '<a class="authmode-btn" href="/tilmelding/">Tilmeld dig</a>' +
+      '<a class="authmode-btn" href="/tilmelding/">Skriv dig op</a>' +
       "</div>";
 
     if (state.authMode === "login") {
@@ -519,7 +519,7 @@
         '<label class="field"><span>Adgangskode</span><input required type="password" id="l-password" placeholder="••••••••"></label>' +
         '<div id="login-error"></div>' +
         '<button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;">Log ind</button></form>' +
-        '<p style="margin-top:16px;font-size:13px;color:var(--ink-soft);">Ny hos os? <a class="btn-text" style="text-decoration:none;" href="/tilmelding/">Tilmeld dig</a></p>' +
+        '<p style="margin-top:16px;font-size:13px;color:var(--ink-soft);">Ny hos os? <a class="btn-text" style="text-decoration:none;" href="/tilmelding/">Skriv dig op</a></p>' +
         "</div>";
 
       document.querySelectorAll("button.authmode-btn[data-mode]").forEach((btn) => btn.addEventListener("click", () => { state.authMode = btn.dataset.mode; renderSignup(); }));
