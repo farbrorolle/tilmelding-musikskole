@@ -25,8 +25,8 @@ export default {
         body: JSON.stringify({
           from: "Olles musikskole <noreply@olleslillemusikskole.dk>",
           to: email,
-          subject: "Tak for din tilmelding",
-          html: `<div style="font-family: system-ui, sans-serif, Arial; font-size: 16px"><p>Hej ${navn}!</p><p>Tak for din tilmelding, jeg vender tilbage med et skema.</p><p>Mange hilsner,<br />Olle</p></div>`,
+          subject: "Tak, du er skrevet op",
+          html: `<div style="font-family: system-ui, sans-serif, Arial; font-size: 16px"><p>Hej ${navn}!</p><p>Tak, du er nu skrevet op på interesselisten. Jeg vender tilbage med et skema.</p><p>Mange hilsner,<br />Olle</p></div>`,
         }),
       });
       if (!res.ok) {
