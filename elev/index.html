@@ -58,6 +58,9 @@
   .wordmark .mark { font-family: "Spectral", serif; font-style: italic; font-size: 24px; color: var(--accent); line-height: 1; }
   .wordmark .name { font-family: "Spectral", serif; font-size: 19px; font-weight: 500; color: var(--ink); }
   .tabs { display: inline-flex; background: var(--border-soft); border-radius: 999px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  /* .tabs' display-regel ville ellers overtrumfe hidden-attributten (samme
+     fejl som blev rettet på /laerer) — fx elevskifteren for søskende. */
+  .tabs[hidden] { display: none; }
   .tab-btn { border: none; background: transparent; color: var(--ink-soft); font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; white-space: nowrap; }
   .tab-btn.active { background: var(--ink); color: var(--bg-raised); }
   .tab-btn:hover:not(.active) { color: var(--ink); }
@@ -213,6 +216,14 @@
   <!-- ═══════════════════════ MIN SIDE ═══════════════════════ -->
   <section class="view" id="view-portal">
     <div class="wrap">
+      <!-- Vises kun når Olle (lærerkontoen) åbner en elevs side via
+           "Se elevens side" i lærerværktøjerne — se state.teacherPreview. -->
+      <div id="teacher-preview-banner" class="panel" hidden style="border-style:dashed;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <p style="margin:0;font-size:14px;color:var(--ink-soft);line-height:1.5;"><b>Forhåndsvisning.</b> Du ser <span id="teacher-preview-name">elevens</span> side, præcis som eleven ser den. Kun du kan se denne besked.</p>
+          <button class="btn-text" id="teacher-preview-close">Luk</button>
+        </div>
+      </div>
       <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
         <div><h1 id="portal-heading">Din side</h1><p>Din faste lektionstid og materiale fra Olle.</p></div>
         <button class="btn-text" id="portal-logout">Log ud</button>
@@ -273,6 +284,17 @@
 <script type="module">
   import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+  // Læses FØR createClient(), som ellers rydder #-delen af adressen væk.
+  // Et invitations- eller "glemt adgangskode"-link lander her med
+  // #...type=recovery; et udløbet link lander med #...error_code=...
+  const URL_HASH = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const IS_RECOVERY_LINK = URL_HASH.get("type") === "recovery";
+  const RECOVERY_LINK_ERROR = URL_HASH.get("error_code") || "";
+  // Sat når Olle åbner en elevs side fra lærerværktøjerne ("Se elevens side").
+  // Virker KUN når den indloggede bruger rent faktisk er lærer — databasens
+  // RLS afgør hvad der må læses, ikke denne parameter.
+  const PREVIEW_STUDENT_ID = new URLSearchParams(location.search).get("elev") || "";
+
   const SUPABASE_URL = "https://oztzxrxfwvvccrqzhiry.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96dHp4cnhmd3Z2Y2NycXpoaXJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNDc0NzYsImV4cCI6MjEwMjkyMzQ3Nn0.ar7EL8jIwYAhFzKIYyXwnANbRfy8iUOlP5Vo2C0rlmM";
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -281,10 +303,16 @@
   // "Send invitation" på lærersiden) — linket logger dem stiltiende ind og
   // udløser denne hændelse, hvorefter de skal vælge deres eget kodeord, før
   // de kan se Min side. Registreres her, før init() kaldes forneden.
+  //
+  // OBS (2026-11-25): samme link bruges nu også til "Glemt adgangskode". Init()
+  // tjekker desuden IS_RECOVERY_LINK direkte, fordi hændelsen kan nå at komme
+  // FØR init() er færdig med at hente data — og init() ville så tidligere
+  // skifte videre til Min side, så eleven aldrig fik valgt en adgangskode.
   sb.auth.onAuthStateChange((event, sess) => {
     if (event === "PASSWORD_RECOVERY") {
       session = sess;
       state.passwordRecovery = true;
+      updateNav();
       switchView("signup");
     }
   });
@@ -354,7 +382,7 @@
     if (name === "portal") renderPortal();
   }
   function updateNav() {
-    const authed = !!session;
+    const authed = !!session && !state.teacherNoPreview && !state.passwordRecovery;
     document.getElementById("tab-btn-signup").hidden = authed;
     document.getElementById("tab-btn-portal").hidden = !authed;
   }
@@ -384,11 +412,43 @@
     signupDraft: { name: "", email: "", phone: "", instrument: "", message: "", password: "", password2: "" },
     passwordRecovery: false,
     selectedStudentId: null,
+    // Lærer-forhåndsvisning: true når læreren ser en bestemt elevs side.
+    teacherPreview: false,
+    // Læreren er logget ind, men har åbnet /elev uden at vælge en elev.
+    teacherNoPreview: false,
+    forgotOpen: false,
+    linkError: RECOVERY_LINK_ERROR,
   };
 
   async function loadElevData() {
     const { data: prof, error: profErr } = await sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
     if (profErr || !prof) { student = null; assignment = null; linkedStudents = []; return; }
+    state.teacherPreview = false;
+    state.teacherNoPreview = false;
+    if (prof.role === "laerer") {
+      // Lærerens forhåndsvisning af en elevs side. Lærerkontoen må i forvejen
+      // læse alle elevers data (RLS: is_laerer()), så her vises blot den valgte
+      // elev med præcis samme visning som eleven selv får.
+      if (PREVIEW_STUDENT_ID) {
+        const { data: stu } = await sb.from("students").select("*").eq("id", PREVIEW_STUDENT_ID).maybeSingle();
+        if (stu) {
+          state.teacherPreview = true;
+          linkedStudents = [{ id: stu.id, name: stu.name }];
+          state.selectedStudentId = stu.id;
+          student = stu;
+          const { data: asg } = await sb.from("recurring_assignments").select("*").eq("student_id", stu.id).order("created_at", { ascending: false }).limit(1);
+          assignment = (asg && asg[0]) || null;
+          if (Object.keys(lessonPrices).length === 0) {
+            const { data: prices } = await sb.from("lesson_prices").select("*");
+            lessonPrices = Object.fromEntries((prices || []).map((p) => [p.instrument, p.price]));
+          }
+          return;
+        }
+      }
+      state.teacherNoPreview = true;
+      student = null; assignment = null; linkedStudents = [];
+      return;
+    }
     if (prof.role !== "elev") { student = null; assignment = null; linkedStudents = []; return; }
 
     // OBS (2026-08-23): et login kan nu være koblet til flere elever
@@ -445,7 +505,7 @@
     if (state.passwordRecovery) {
       el.innerHTML =
         '<div class="panel"><div class="section-label"><span>Vælg din adgangskode</span></div>' +
-        '<p class="section-sub">Olle har oprettet en konto til dig — vælg en adgangskode for at komme i gang.</p>' +
+        '<p class="section-sub">Vælg en adgangskode, så kan du logge ind fremover.</p>' +
         '<form id="recovery-form">' +
         '<label class="field" style="margin-top:0;"><span>Ny adgangskode</span><input required type="password" id="rec-password" placeholder="Mindst 6 tegn"></label>' +
         '<label class="field"><span>Bekræft adgangskode</span><input required type="password" id="rec-password2" placeholder="Gentag adgangskoden"></label>' +
@@ -462,10 +522,29 @@
         const { error } = await sb.auth.updateUser({ password: p1 });
         if (error) { errEl.innerHTML = '<p class="error-msg">' + friendlyAuthError(error.message) + "</p>"; return; }
         state.passwordRecovery = false;
+        // Lærerens "Glemt adgangskode"-link lander også her (det er den eneste
+        // godkendte adresse i Supabase). Sessionen deles på tværs af /elev og
+        // /laerer, så læreren sendes blot videre, allerede logget ind.
+        const { data: prof } = await sb.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
+        if (prof && prof.role === "laerer") { location.replace("/laerer/"); return; }
         await loadElevData();
         updateNav();
         switchView("portal");
         toast("Adgangskode gemt — velkommen!");
+      });
+      return;
+    }
+
+    if (state.teacherNoPreview) {
+      el.innerHTML =
+        '<div class="panel"><div class="section-label"><span>Du er logget ind som lærer</span></div>' +
+        '<p class="section-sub">For at se en elevs side skal du åbne den fra dine lærerværktøjer: Planlægning → Faste tider lige nu → "Se elevens side".</p>' +
+        '<button type="button" class="btn btn-ghost" id="teacher-logout-here" style="margin-top:12px;">Log ud</button></div>';
+      document.getElementById("teacher-logout-here").addEventListener("click", async () => {
+        await sb.auth.signOut();
+        session = null; state.teacherNoPreview = false;
+        updateNav();
+        renderSignup();
       });
       return;
     }
@@ -517,10 +596,50 @@
         '<form id="login-form">' +
         '<label class="field"><span>Mailadresse</span><input required type="email" id="l-email" placeholder="dig@mail.dk"></label>' +
         '<label class="field"><span>Adgangskode</span><input required type="password" id="l-password" placeholder="••••••••"></label>' +
-        '<div id="login-error"></div>' +
+        '<div id="login-error">' +
+        (state.linkError ? '<p class="error-msg">Linket er udløbet eller allerede brugt. Tryk på "Glemt adgangskode?" herunder for at få et nyt.</p>' : "") +
+        "</div>" +
         '<button type="submit" class="btn btn-primary btn-block" style="margin-top:20px;">Log ind</button></form>' +
+        '<p style="margin-top:12px;font-size:13px;"><button type="button" class="btn-text" id="forgot-toggle">Glemt adgangskode?</button></p>' +
+        '<form id="forgot-form"' + (state.forgotOpen || state.linkError ? "" : " hidden") + ' style="margin-top:8px;padding-top:12px;border-top:1px dashed var(--border);">' +
+        '<p class="section-sub" style="margin-top:0;">Skriv din mailadresse, så sender vi dig et link, hvor du kan vælge en ny adgangskode.</p>' +
+        '<label class="field"><span>Mailadresse</span><input required type="email" id="forgot-email" placeholder="dig@mail.dk"></label>' +
+        '<div id="forgot-msg"></div>' +
+        '<button type="submit" class="btn btn-primary btn-block" style="margin-top:16px;">Send link</button></form>' +
         '<p style="margin-top:16px;font-size:13px;color:var(--ink-soft);">Ny hos os? <a class="btn-text" style="text-decoration:none;" href="/tilmelding/">Skriv dig op</a></p>' +
         "</div>";
+
+      document.getElementById("forgot-toggle").addEventListener("click", () => {
+        const f = document.getElementById("forgot-form");
+        f.hidden = !f.hidden;
+        state.forgotOpen = !f.hidden;
+        if (!f.hidden) {
+          const typed = document.getElementById("l-email").value.trim();
+          if (typed) document.getElementById("forgot-email").value = typed;
+          document.getElementById("forgot-email").focus();
+        }
+      });
+      document.getElementById("forgot-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("forgot-email").value.trim();
+        const msgEl = document.getElementById("forgot-msg");
+        const btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        msgEl.innerHTML = "";
+        try {
+          const res = await fetch("/api/request-password-reset", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          });
+          const out = await res.json().catch(() => ({}));
+          if (!res.ok || !out.ok) throw new Error(out.error || "fejl");
+          msgEl.innerHTML = '<p class="info-msg">Hvis der findes en bruger med den mailadresse, har vi nu sendt et link. Tjek også din spam-mappe.</p>';
+        } catch {
+          msgEl.innerHTML = '<p class="error-msg">Linket kunne ikke sendes lige nu. Prøv igen om lidt.</p>';
+        }
+        btn.disabled = false;
+      });
 
       document.querySelectorAll("button.authmode-btn[data-mode]").forEach((btn) => btn.addEventListener("click", () => { state.authMode = btn.dataset.mode; renderSignup(); }));
       document.getElementById("login-form").addEventListener("submit", async (e) => {
@@ -535,8 +654,10 @@
         submitBtn.disabled = false;
         if (error) { errEl.innerHTML = '<p class="error-msg">' + friendlyAuthError(error.message) + "</p>"; return; }
         session = data.session;
+        state.linkError = "";
         await loadElevData();
         updateNav();
+        if (state.teacherNoPreview) { switchView("signup"); return; }
         switchView("portal");
         toast("Logget ind.");
       });
@@ -642,6 +763,14 @@
 
   // ═══════════════════════ MIN SIDE ═══════════════════════
   async function renderPortal() {
+    // Lærer-forhåndsvisning: vis banneret, og skjul "Log ud" — sessionen deles
+    // med /laerer, så et log ud her ville også logge Olle ud af lærersiden.
+    document.getElementById("teacher-preview-banner").hidden = !state.teacherPreview;
+    document.getElementById("portal-logout").hidden = state.teacherPreview;
+    if (state.teacherPreview && student) {
+      document.getElementById("teacher-preview-name").textContent = student.name.split(" ")[0] + "s";
+      document.title = "Forhåndsvisning: " + student.name + " — Olles lille musikskole";
+    }
     renderStudentSwitcher();
     document.getElementById("portal-heading").textContent = student ? student.name.split(" ")[0] + " — din side" : "Din side";
 
@@ -782,13 +911,29 @@
     toast("Logget ud.");
   });
 
+  document.getElementById("teacher-preview-close").addEventListener("click", () => {
+    window.close();
+    // Hvis browseren ikke tillader at lukke fanen, så vis i det mindste hvordan.
+    setTimeout(() => toast("Luk denne fane for at gå tilbage til lærerværktøjerne."), 200);
+  });
+
   // ───────────────────────── Init ─────────────────────────
   async function init() {
     const { data } = await sb.auth.getSession();
     session = data.session;
+    if (session && (IS_RECOVERY_LINK || state.passwordRecovery)) {
+      // Kommer fra et invitations- eller "glemt adgangskode"-link: vælg
+      // adgangskode først, før noget andet.
+      state.passwordRecovery = true;
+      updateNav();
+      switchView("signup");
+      return;
+    }
     if (session) {
       await loadElevData();
+      if (state.passwordRecovery) return; // hændelsen kom mens data blev hentet
       updateNav();
+      if (state.teacherNoPreview) { switchView("signup"); return; }
       switchView("portal");
     } else {
       updateNav();
