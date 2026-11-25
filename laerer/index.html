@@ -285,6 +285,13 @@
       <div id="laerer-login-error"></div>
       <button type="submit" class="btn btn-primary" style="margin-top:20px;width:100%;">Log ind</button>
     </form>
+    <p style="margin-top:12px;font-size:13px;"><button type="button" class="btn-text" id="laerer-forgot-toggle">Glemt adgangskode?</button></p>
+    <form id="laerer-forgot-form" hidden style="margin-top:8px;padding-top:12px;border-top:1px dashed var(--border);">
+      <p class="section-sub" style="margin-top:0;">Skriv din mailadresse, så sender vi dig et link, hvor du kan vælge en ny adgangskode.</p>
+      <label class="field" style="margin-top:0;"><span>Mailadresse</span><input required type="email" id="lf-email" placeholder="dig@mail.dk"></label>
+      <div id="laerer-forgot-msg"></div>
+      <button type="submit" class="btn btn-primary" style="margin-top:16px;width:100%;">Send link</button>
+    </form>
     <p style="margin-top:16px;font-size:13px;color:var(--ink-soft);">Første gang på denne konto? <button type="button" class="btn-text" id="laerer-goto-signup">Opret lærerkonto</button></p>
     <form id="laerer-signup-form" hidden style="margin-top:16px;padding-top:16px;border-top:1px dashed var(--border);">
       <label class="field" style="margin-top:0;"><span>Mailadresse</span><input required type="email" id="ls-email" placeholder="din@mail.dk"></label>
@@ -477,6 +484,40 @@
   // ═══════════════════════ AUTH / LOGIN GATE ═══════════════════════
   let session = null;
   let isLaerer = false;
+
+  // "Glemt adgangskode": sender et nulstillingslink via Resend (samme
+  // afsender som invitationerne). Linket lander på /elev/, hvor man vælger en
+  // ny adgangskode, hvorefter læreren automatisk sendes videre hertil.
+  document.getElementById("laerer-forgot-toggle").addEventListener("click", () => {
+    const f = document.getElementById("laerer-forgot-form");
+    f.hidden = !f.hidden;
+    if (!f.hidden) {
+      const typed = document.getElementById("ll-email").value.trim();
+      if (typed) document.getElementById("lf-email").value = typed;
+      document.getElementById("lf-email").focus();
+    }
+  });
+  document.getElementById("laerer-forgot-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("lf-email").value.trim();
+    const msgEl = document.getElementById("laerer-forgot-msg");
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    msgEl.innerHTML = "";
+    try {
+      const res = await fetch("/api/request-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || !out.ok) throw new Error(out.error || "fejl");
+      msgEl.innerHTML = '<p style="color:var(--sage);font-size:13px;margin-top:12px;">Hvis der findes en bruger med den mailadresse, har vi nu sendt et link. Tjek også din spam-mappe.</p>';
+    } catch {
+      msgEl.innerHTML = '<p class="error-msg">Linket kunne ikke sendes lige nu. Prøv igen om lidt.</p>';
+    }
+    btn.disabled = false;
+  });
 
   document.getElementById("laerer-goto-signup").addEventListener("click", () => {
     document.getElementById("laerer-signup-form").hidden = false;
@@ -914,9 +955,16 @@
         (a.student.phone ? '<a class="btn-text" style="text-decoration:none;" href="tel:' + a.student.phone + '">📞 ' + a.student.phone + "</a>" : "") +
         '<a class="btn-text" style="text-decoration:none;" href="mailto:' + a.student.email + '">✉ ' + a.student.email + "</a>" +
         '<button class="btn-text edit-time-toggle">Rediger tid</button>' +
+        '<button class="btn-text view-student-page">Se elevens side</button>' +
         '<span class="account-ctrl" style="white-space:nowrap;"></span>' +
         '<div class="assign-form" hidden style="flex-basis:100%;"></div>';
       wireAccountCtrl(row.querySelector(".account-ctrl"), a.student);
+      // Åbner elevens egen side (/elev) i en ny fane, som eleven ser den.
+      // Lærerkontoen må i forvejen læse alle elevers data, så der kræves
+      // hverken elevens adgangskode eller at eleven har en konto endnu.
+      row.querySelector(".view-student-page").addEventListener("click", () => {
+        window.open("/elev/?elev=" + encodeURIComponent(a.student_id), "_blank");
+      });
       row.querySelector(".edit-time-toggle").addEventListener("click", () => {
         const form = row.querySelector(".assign-form");
         const isOpen = !form.hidden;
