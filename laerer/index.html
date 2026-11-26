@@ -265,6 +265,19 @@
   .price-edit { display: inline-flex; align-items: center; gap: 6px; }
   .price-edit input { width: 84px; font-family: inherit; font-size: 13.5px; color: var(--ink); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; }
 
+  /* ───────────────────────── Forberedelse pr. lektion ───────────────────────── */
+  .prep-block { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: var(--accent-wash); }
+  .prep-block .prep-head { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px; display: flex; gap: 8px; align-items: center; }
+  .prep-block textarea { width: 100%; font-family: inherit; font-size: 14px; color: var(--ink); background: var(--bg-raised); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; resize: vertical; min-height: 64px; }
+  .prep-item { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 7px 0; border-top: 1px dashed var(--border); font-size: 13.5px; }
+  .prep-item:first-child { border-top: none; }
+  .prep-item .pi-title { flex: 1; min-width: 140px; }
+  .prep-items { margin-top: 8px; }
+  .prep-add { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .prep-add select { font-family: inherit; font-size: 13px; color: var(--ink); background: var(--bg-raised); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; max-width: 240px; }
+  .plan-card { margin-top: 10px; }
+  .plan-card.cancelled { opacity: 0.55; }
+
   /* ───────────────────────── Elever ───────────────────────── */
   .stu-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .stu-card-meta { font-size: 13px; color: var(--ink-soft); margin-top: 8px; line-height: 1.5; }
@@ -407,7 +420,7 @@
        Kalender med invitation) eller her med "Book lektion". -->
   <section class="view" id="view-teachdays">
     <div class="wrap">
-      <div class="page-head"><h1>Lektioner</h1><p>Alle bookede lektioner. Book en lektion her — eller bed Claude om at booke den, så kommer den også i din Google Kalender med en invitation til eleven.</p></div>
+      <div class="page-head"><h1>Lektioner</h1><p>Overblik og forberedelse: skriv en hurtig plan til hver kommende lektion og læg filer, videoer eller akkordark klar — kun du ser dem, indtil du trykker “Del med eleven”. Book en lektion her, eller bed Claude om at booke den, så kommer den også i din Google Kalender med en invitation til eleven.</p></div>
       <div class="panel">
         <div class="section-label"><span>Kommende lektioner</span><span class="count-chip" id="teachdays-count">0</span></div>
         <button class="btn btn-primary btn-small" id="book-toggle">+ Book lektion</button>
@@ -703,6 +716,7 @@
   let lessonPrices = {};
   let elevProfiles = [];    // profiles med role='elev' (student_id, invited_at) — bruges til kontostatus
   let teacherNotes = [];    // teacher_notes — private noter, læreren ser dem, eleven kan aldrig se dem (egen tabel/RLS)
+  let prepItems = [];       // lesson_prep_items — privat forberedelse pr. lektion (kun læreren ser dem)
   let teacherDocuments = []; // teacher_documents — lærerens gemte dokumenter (fx akkordark som PDF), kun synlige for læreren
 
   const state = {
@@ -714,7 +728,7 @@
   function studentById(id) { return students.find((s) => s.id === id); }
 
   async function loadAllData() {
-    const [{ data: wl }, { data: stu }, { data: asg }, { data: att }, { data: notes }, { data: tnotes }, { data: media }, { data: cancelled }, { data: extra }, { data: prices }, { data: eprof }, { data: tdocs }] = await Promise.all([
+    const [{ data: wl }, { data: stu }, { data: asg }, { data: att }, { data: notes }, { data: tnotes }, { data: media }, { data: cancelled }, { data: extra }, { data: prices }, { data: eprof }, { data: tdocs }, { data: preps }] = await Promise.all([
       sb.from("waitlist_signups").select("*").eq("status", "pending").order("created_at", { ascending: true }),
       sb.from("students").select("*"),
       sb.from("lessons").select("*").order("lesson_date", { ascending: true }).order("start_time", { ascending: true }),
@@ -731,8 +745,10 @@
       // vise "ingen konto" for en elev der reelt deler login med en søskende.
       sb.from("account_students").select("student_id, profiles(invited_at)"),
       sb.from("teacher_documents").select("id, title, storage_path, sheet, created_at").order("created_at", { ascending: false }),
+      sb.from("lesson_prep_items").select("*").order("created_at", { ascending: true }),
     ]);
     waitlist = wl || [];
+    prepItems = preps || [];
     teacherDocuments = tdocs || [];
     students = stu || [];
     lessons = (asg || []).map((l) => ({ ...l, student: studentById(l.student_id) })).filter((l) => l.student);
@@ -774,6 +790,10 @@
   async function refreshTeacherNotes() {
     const { data: tnotes } = await sb.from("teacher_notes").select("*");
     teacherNotes = tnotes || [];
+  }
+  async function refreshPrepItems() {
+    const { data } = await sb.from("lesson_prep_items").select("*").order("created_at", { ascending: true });
+    prepItems = data || [];
   }
   async function refreshTeacherDocuments() {
     const { data } = await sb.from("teacher_documents").select("id, title, storage_path, sheet, created_at").order("created_at", { ascending: false });
@@ -840,7 +860,8 @@
       '<label class="field"><span>Mailadresse</span><input type="email" class="ns-email" value="' + escHtml(pf.email || "") + '"></label>' +
       '<label class="field"><span>Telefon</span><input type="tel" class="ns-phone" value="' + escHtml(pf.phone || "") + '"></label>' +
       '<label class="field"><span>Instrument / ønsker</span><input type="text" class="ns-instrument" value="' + escHtml(pf.instrument || "") + '"></label>' +
-      '<label class="field"><span>Pris pr. lektion (kr.)</span><input type="number" min="0" step="10" class="ns-price" placeholder="fx 300"></label>' +
+      '<label class="field"><span>Pris hjemme hos dig (kr.)</span><input type="number" min="0" step="10" class="ns-price" placeholder="fx 300"></label>' +
+      '<label class="field"><span>Pris hjemme hos eleven (kr.)</span><input type="number" min="0" step="10" class="ns-price-home" placeholder="fx 400"></label>' +
       "</div>" +
       '<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">' +
       '<button type="button" class="btn btn-primary btn-small ns-submit">Opret elev</button>' +
@@ -855,9 +876,10 @@
         phone: container.querySelector(".ns-phone").value.trim(),
         instrument: container.querySelector(".ns-instrument").value.trim(),
         price: container.querySelector(".ns-price").value === "" ? null : Math.round(Number(container.querySelector(".ns-price").value)),
+        priceHome: container.querySelector(".ns-price-home").value === "" ? null : Math.round(Number(container.querySelector(".ns-price-home").value)),
       };
       if (!info.name || !info.email) { toast("Udfyld i det mindste navn og mail."); return; }
-      if (info.price !== null && (!Number.isFinite(info.price) || info.price < 0)) { toast("Prisen skal være et tal."); return; }
+      if ((info.price !== null && (!Number.isFinite(info.price) || info.price < 0)) || (info.priceHome !== null && (!Number.isFinite(info.priceHome) || info.priceHome < 0))) { toast("Priserne skal være tal."); return; }
       btn.disabled = true;
       const res = await createStudent(info);
       btn.disabled = false;
@@ -876,11 +898,17 @@
   // elev med et ANDET navn, spørges der om det er samme person (så bruges den
   // eksisterende elev) eller en ny person, fx en søskende (så oprettes en ny
   // elev, der kobles på samme login, hvis mailen allerede har et login).
+  async function updatePricesIfGiven(studentId, info) {
+    const upd = {};
+    if (info.price !== null) upd.lesson_price = info.price;
+    if (info.priceHome !== null) upd.lesson_price_home = info.priceHome;
+    if (Object.keys(upd).length) await sb.from("students").update(upd).eq("id", studentId);
+  }
   async function createStudent(info) {
     const { data: existingRows } = await sb.from("students").select("id,name").eq("email", info.email);
     const existing = (existingRows || [])[0] || null;
     if (existing && existing.name.toLowerCase() === info.name.toLowerCase()) {
-      if (info.price !== null) await sb.from("students").update({ lesson_price: info.price }).eq("id", existing.id);
+      await updatePricesIfGiven(existing.id, info);
       return { id: existing.id, message: existing.name + " findes allerede som elev." };
     }
     let sharedWith = null;
@@ -891,13 +919,13 @@
         "Tryk Annullér hvis det er en ANDEN PERSON (fx en søskende med samme mailadresse) — så oprettes en ny elev, der deler login med " + existing.name + "."
       );
       if (same) {
-        if (info.price !== null) await sb.from("students").update({ lesson_price: info.price }).eq("id", existing.id);
+        await updatePricesIfGiven(existing.id, info);
         return { id: existing.id, message: "Bruger den eksisterende elev " + existing.name + "." };
       }
       sharedWith = existing.name;
     }
     const { data: newStu, error } = await sb.from("students")
-      .insert({ name: info.name, email: info.email, phone: info.phone || null, instrument_onske: info.instrument || null, lesson_price: info.price })
+      .insert({ name: info.name, email: info.email, phone: info.phone || null, instrument_onske: info.instrument || null, lesson_price: info.price, lesson_price_home: info.priceHome })
       .select().single();
     if (error) { toast("Kunne ikke oprette eleven: " + escHtml(error.message)); return null; }
     if (sharedWith) {
@@ -915,23 +943,46 @@
     wireNewStudentForm(form, {}, () => {});
   });
 
-  function priceLabel(st) { return st.lesson_price === null || st.lesson_price === undefined ? "Pris ikke sat" : formatKr(st.lesson_price) + " pr. lektion"; }
-  async function saveStudentPrice(st, value) {
-    const v = value === "" ? null : Math.round(Number(value));
-    if (v !== null && (!Number.isFinite(v) || v < 0)) { toast("Prisen skal være et tal."); return false; }
-    const { error } = await sb.from("students").update({ lesson_price: v }).eq("id", st.id);
+  // Hver elev har to priser (Olle, 2026-11-26): hjemme hos Olle (også online
+  // og andet sted) = students.lesson_price, og hjemme hos eleven =
+  // students.lesson_price_home. Prisen fastlåses på lektionen ved booking.
+  const HOME_LOCATION = "Hjemme hos eleven";
+  function isNum(v) { return v !== null && v !== undefined && v !== ""; }
+  function priceFor(st, location) {
+    if (!st) return null;
+    if (location === HOME_LOCATION && isNum(st.lesson_price_home)) return st.lesson_price_home;
+    return isNum(st.lesson_price) ? st.lesson_price : null;
+  }
+  function lessonPrice(l) { return isNum(l.price) ? l.price : priceFor(l.student, l.location); }
+  function priceLabel(st) {
+    if (!isNum(st.lesson_price) && !isNum(st.lesson_price_home)) return "Pris ikke sat";
+    return "Hos dig " + (isNum(st.lesson_price) ? formatKr(st.lesson_price) : "–") + " · hos eleven " + (isNum(st.lesson_price_home) ? formatKr(st.lesson_price_home) : "–");
+  }
+  function parsePrice(raw) {
+    if (raw === "" || raw === null || raw === undefined) return { ok: true, v: null };
+    const v = Math.round(Number(raw));
+    return Number.isFinite(v) && v >= 0 ? { ok: true, v } : { ok: false };
+  }
+  async function saveStudentPrices(st, rawMine, rawHome) {
+    const a = parsePrice(rawMine), b = parsePrice(rawHome);
+    if (!a.ok || !b.ok) { toast("Priserne skal være tal."); return false; }
+    const { error } = await sb.from("students").update({ lesson_price: a.v, lesson_price_home: b.v }).eq("id", st.id);
     if (error) { toast("Kunne ikke gemme prisen: " + escHtml(error.message)); return false; }
-    st.lesson_price = v;
-    toast("Prisen for " + escHtml(st.name) + " er gemt: " + escHtml(priceLabel(st)) + ".");
+    st.lesson_price = a.v; st.lesson_price_home = b.v;
+    toast("Priser for " + escHtml(st.name) + " gemt: " + escHtml(priceLabel(st)) + ". Gælder nye bookinger.");
     return true;
   }
-  // Lille "ret pris"-felt, brugt i Planlægning og i Elever.
+  // "Ret pris"-felter, brugt i Planlægning og i Elever.
   function priceEditHtml(st) {
-    return '<span class="price-edit"><input type="number" min="0" step="10" class="price-input" value="' + (st.lesson_price === null || st.lesson_price === undefined ? "" : st.lesson_price) + '" placeholder="kr." aria-label="Pris pr. lektion"><span style="font-size:12.5px;color:var(--ink-soft);">kr./lektion</span><button type="button" class="btn-text price-save">Gem</button></span>';
+    const val = (v) => (isNum(v) ? v : "");
+    return '<span class="price-edit">' +
+      '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-soft);">Hos dig <input type="number" min="0" step="10" class="price-input" value="' + val(st.lesson_price) + '" placeholder="kr."></label>' +
+      '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-soft);">Hos eleven <input type="number" min="0" step="10" class="price-input-home" value="' + val(st.lesson_price_home) + '" placeholder="kr."></label>' +
+      '<button type="button" class="btn-text price-save">Gem</button></span>';
   }
   function wirePriceEdit(scope, st, after) {
     scope.querySelector(".price-save").addEventListener("click", async () => {
-      const ok = await saveStudentPrice(st, scope.querySelector(".price-input").value);
+      const ok = await saveStudentPrices(st, scope.querySelector(".price-input").value, scope.querySelector(".price-input-home").value);
       if (ok && after) after();
     });
   }
@@ -1204,8 +1255,9 @@
       '<label class="field"><span>Starttid</span><input type="time" class="bk-start" value="15:00"></label>' +
       '<label class="field"><span>Varighed</span><select class="bk-dur"><option value="30" selected>30 min.</option><option value="45">45 min.</option><option value="60">60 min.</option></select></label>' +
       '<label class="field"><span>Sted</span><select class="bk-place">' + LOCATIONS.map((p) => "<option>" + p + "</option>").join("") + "</select></label>" +
-      '<label class="field"><span>Note (kun til dig, valgfri)</span><input type="text" class="bk-note" maxlength="200"></label>' +
+      '<label class="field"><span>Plan / note (kun til dig, valgfri)</span><input type="text" class="bk-note" maxlength="500"></label>' +
       "</div>" +
+      '<p class="bk-price" style="font-size:13.5px;margin-top:10px;"></p>' +
       '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:10px;">Lektioner booket her kommer ikke i Google Kalender og giver ingen invitation. Bed Claude om at booke, hvis eleven skal have en invitation.</p>' +
       '<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">' +
       '<button type="button" class="btn btn-primary btn-small bk-submit">Book lektion</button>' +
@@ -1213,6 +1265,17 @@
     container.hidden = false;
     const dateInput = container.querySelector(".bk-date");
     dateInput.addEventListener("click", () => { try { if (dateInput.showPicker) dateInput.showPicker(); } catch (e) { /* ignorer */ } });
+    // Prisen følger stedet (hos dig / hos eleven) og vises, før man booker.
+    const updatePricePreview = () => {
+      const st = studentById(container.querySelector(".bk-student").value);
+      const pr = priceFor(st, container.querySelector(".bk-place").value);
+      container.querySelector(".bk-price").innerHTML = pr === null
+        ? '<span style="color:var(--rose);">Ingen pris sat for dette sted</span> — sæt prisen under Elever eller Planlægning.'
+        : "Pris for lektionen: <b>" + escHtml(formatKr(pr)) + "</b>";
+    };
+    container.querySelector(".bk-student").addEventListener("change", updatePricePreview);
+    container.querySelector(".bk-place").addEventListener("change", updatePricePreview);
+    updatePricePreview();
     container.querySelector(".bk-cancel").addEventListener("click", () => { container.hidden = true; });
     container.querySelector(".bk-submit").addEventListener("click", async (e) => {
       const btn = e.currentTarget;
@@ -1225,9 +1288,10 @@
       const clash = lessons.find((l) => l.status === "booked" && l.lesson_date === date && l.start_time.slice(0, 5) === start);
       if (clash && !confirm("Der er allerede booket " + clash.student.name + " " + formatDate(date) + " kl. " + start + ". Book alligevel?")) return;
       btn.disabled = true;
+      const place = container.querySelector(".bk-place").value;
       const { error } = await sb.from("lessons").insert({
         student_id: studentId, lesson_date: date, start_time: start, end_time: hhmmPlus(start, dur),
-        location: container.querySelector(".bk-place").value, note: container.querySelector(".bk-note").value.trim() || null,
+        location: place, note: container.querySelector(".bk-note").value.trim() || null, price: priceFor(st, place),
       });
       btn.disabled = false;
       if (error) { toast("Kunne ikke booke lektionen: " + escHtml(error.message)); return; }
@@ -1253,6 +1317,18 @@
     toast("Lektionen er aflyst." + (l.google_event_id ? " Husk at slette den i Google Kalender — eller bed Claude om det." : ""));
   }
 
+  // Lektioner = den overordnede planlægning: hver kommende lektion som et kort
+  // med plan/noter og privat forberedelsesmateriale (kun læreren ser det).
+  function lessonHeadHtml(l) {
+    const pr = lessonPrice(l);
+    return '<span class="mono-time" style="width:auto;">' + l.start_time.slice(0, 5) + "–" + l.end_time.slice(0, 5) + "</span>" +
+      '<span class="row-title"><span class="name">' + escHtml(l.student.name) + "</span>" +
+      (l.location ? '<span class="tag tag-instr">' + escHtml(l.location) + "</span>" : "") +
+      (pr !== null ? '<span class="tag">' + escHtml(formatKr(pr)) + "</span>" : '<span class="tag tag-cancelled">Pris mangler</span>') +
+      (l.google_event_id ? '<span class="tag tag-recurring">I kalenderen</span>' : "") +
+      (l.status === "cancelled" ? '<span class="tag tag-cancelled">Aflyst</span>' : "") +
+      "</span>";
+  }
   function renderTeachDays() {
     const list = document.getElementById("teachdays-list");
     const today = isoToday();
@@ -1269,22 +1345,144 @@
       head.querySelector(".day-goto").addEventListener("click", () => { state.todayViewIso = iso; switchView("today"); });
       list.appendChild(head);
       byDate[iso].sort((x, y) => x.start_time.localeCompare(y.start_time)).forEach((l) => {
-        const row = document.createElement("div");
-        row.className = "lesson-row" + (l.status === "cancelled" ? " cancelled" : "");
-        row.innerHTML =
-          '<span class="mono-time" style="width:auto;">' + l.start_time.slice(0, 5) + "–" + l.end_time.slice(0, 5) + "</span>" +
-          '<span class="row-title"><span class="name">' + escHtml(l.student.name) + "</span>" +
-          (l.location ? '<span class="tag tag-instr">' + escHtml(l.location) + "</span>" : "") +
-          (l.google_event_id ? '<span class="tag tag-recurring">I kalenderen</span>' : "") +
-          (l.status === "cancelled" ? '<span class="tag tag-cancelled">Aflyst</span>' : "") +
-          (l.note ? '<span style="display:block;font-size:12.5px;color:var(--ink-soft);margin-top:3px;">' + escHtml(l.note) + "</span>" : "") +
-          "</span>" +
-          (l.status === "booked" ? '<button type="button" class="btn-text danger lesson-cancel">Aflys</button>' : "");
-        const cbtn = row.querySelector(".lesson-cancel");
+        const card = document.createElement("div");
+        card.className = "lesson-card plan-card" + (l.status === "cancelled" ? " cancelled" : "");
+        card.innerHTML =
+          '<div class="lesson-card-top" style="flex-wrap:wrap;">' + lessonHeadHtml(l) +
+          '<button type="button" class="btn-text see-student">Elev</button>' +
+          (l.status === "booked" ? '<button type="button" class="btn-text danger lesson-cancel">Aflys</button>' : "") +
+          "</div>" +
+          (l.status === "booked" ? '<div class="prep-slot"></div>' : "");
+        card.querySelector(".see-student").addEventListener("click", () => showStudentPage(l.student_id, "plan"));
+        const cbtn = card.querySelector(".lesson-cancel");
         if (cbtn) cbtn.addEventListener("click", () => cancelLesson(l));
-        list.appendChild(row);
+        const slot = card.querySelector(".prep-slot");
+        if (slot) mountPrepBlock(slot, l);
+        list.appendChild(card);
       });
     });
+  }
+
+  // ── Privat forberedelse pr. lektion (plan + filer/dokumenter) ──
+  // Noten ligger i lessons.note, materialet i lesson_prep_items + storage-mappen
+  // laerer-forberedelse/<lektion>/ — ingen elev kan læse nogen af delene. "Del
+  // med eleven" kopierer en fil over i elevens eget materiale for lektionsdagen.
+  function prepItemsFor(lessonId) { return prepItems.filter((p) => p.lesson_id === lessonId); }
+  const PREP_ICON = { file: "📄", video: "▶", document: "🎹" };
+  function prepBlockHtml(l) {
+    const items = prepItemsFor(l.id);
+    return (
+      '<div class="prep-block">' +
+      '<div class="prep-head">🔒 Din forberedelse — eleven ser den ikke</div>' +
+      '<textarea class="prep-note" rows="2" placeholder="Plan/noter til lektionen — fx C-dur og G7, venstre hånd i tempo 80 …">' + escHtml(l.note || "") + "</textarea>" +
+      (items.length
+        ? '<div class="prep-items">' + items.map((it) =>
+            '<div class="prep-item" data-prep-id="' + it.id + '"><span class="pi-title">' + (PREP_ICON[it.type] || "📄") + " " + escHtml(it.title) +
+            (it.shared_at ? ' <span class="tag tag-done">Delt med eleven</span>' : "") + "</span>" +
+            '<button type="button" class="btn-text pi-open">Åbn</button>' +
+            (it.shared_at ? "" : '<button type="button" class="btn-text pi-share">Del med eleven</button>') +
+            '<button type="button" class="btn-text danger pi-remove">Fjern</button></div>'
+          ).join("") + "</div>"
+        : "") +
+      '<div class="prep-add">' +
+      '<button type="button" class="btn-text pi-add-file">+ Fil</button>' +
+      '<button type="button" class="btn-text pi-add-video">+ Video (maks. 50 MB)</button>' +
+      (teacherDocuments.length
+        ? '<select class="pi-doc" aria-label="Vælg gemt dokument">' + docOptionsHtml() + '</select><button type="button" class="btn-text pi-add-doc">+ Gemt dokument</button>'
+        : "") +
+      '<input type="file" class="pi-input-file" hidden><input type="file" accept="video/*" class="pi-input-video" hidden>' +
+      "</div></div>"
+    );
+  }
+  function mountPrepBlock(slot, l) {
+    slot.innerHTML = prepBlockHtml(l);
+    const rerender = () => mountPrepBlock(slot, l);
+    const noteEl = slot.querySelector(".prep-note");
+    noteEl.addEventListener("blur", async () => {
+      const val = noteEl.value.trim() || null;
+      if ((l.note || null) === val) return;
+      l.note = val; // sættes med det samme, så en omtegning ikke mister teksten
+      const { error } = await sb.from("lessons").update({ note: val }).eq("id", l.id);
+      if (error) { toast("Kunne ikke gemme planen: " + escHtml(error.message)); return; }
+      toast("Plan gemt for " + escHtml(possessive(firstName(l.student.name))) + " lektion " + escHtml(formatDate(l.lesson_date)).replace(/\.$/, "") + ".");
+      refreshPlanSummaries();
+    });
+    async function addFile(file, type, titleOverride) {
+      const title = titleOverride || file.name;
+      const path = "laerer-forberedelse/" + l.id + "/" + crypto.randomUUID() + "-" + safeFileName(title);
+      const { error: upErr } = await sb.storage.from("lesson-media").upload(path, file, file.type ? { contentType: file.type } : undefined);
+      if (upErr) throw upErr;
+      const { error: insErr } = await sb.from("lesson_prep_items").insert({ lesson_id: l.id, type, title, storage_path: path });
+      if (insErr) { await sb.storage.from("lesson-media").remove([path]); throw insErr; }
+      await refreshPrepItems();
+      rerender();
+    }
+    const fIn = slot.querySelector(".pi-input-file"), vIn = slot.querySelector(".pi-input-video");
+    slot.querySelector(".pi-add-file").addEventListener("click", () => fIn.click());
+    slot.querySelector(".pi-add-video").addEventListener("click", () => vIn.click());
+    const onPick = async (input, type) => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      if (file.size > 50 * 1024 * 1024) { toast("Filen er over 50 MB — det er grænsen på det nuværende abonnement."); return; }
+      toast("Lægger " + escHtml(file.name) + " op …");
+      try { await addFile(file, type); toast("Tilføjet til din forberedelse."); }
+      catch (err) { toast("Upload fejlede: " + escHtml(err && err.message ? err.message : String(err))); }
+    };
+    fIn.addEventListener("change", () => onPick(fIn, "file"));
+    vIn.addEventListener("change", () => onPick(vIn, "video"));
+    const addDocBtn = slot.querySelector(".pi-add-doc");
+    if (addDocBtn) addDocBtn.addEventListener("click", async () => {
+      const doc = teacherDocuments.find((d) => d.id === slot.querySelector(".pi-doc").value);
+      if (!doc) return;
+      try {
+        const { data: blob, error } = await sb.storage.from("lesson-media").download(doc.storage_path);
+        if (error) throw error;
+        await addFile(new File([blob], (doc.title || "Dokument") + ".pdf", { type: "application/pdf" }), "document", (doc.title || "Dokument") + ".pdf");
+        toast("“" + escHtml(doc.title) + "” tilføjet til din forberedelse.");
+      } catch (err) { toast("Kunne ikke tilføje dokumentet: " + escHtml(err && err.message ? err.message : String(err))); }
+    });
+    slot.querySelectorAll("[data-prep-id]").forEach((row) => {
+      const it = prepItems.find((x) => x.id === row.dataset.prepId);
+      row.querySelector(".pi-open").addEventListener("click", async () => {
+        const w = window.open("", "_blank");
+        const { data, error } = await sb.storage.from("lesson-media").createSignedUrl(it.storage_path, 600);
+        if (error || !data) { if (w) w.close(); toast("Kunne ikke åbne filen."); return; }
+        if (w) w.location.href = data.signedUrl; else location.href = data.signedUrl;
+      });
+      const shareBtn = row.querySelector(".pi-share");
+      if (shareBtn) shareBtn.addEventListener("click", async () => {
+        shareBtn.disabled = true;
+        try {
+          const { data: blob, error: dlErr } = await sb.storage.from("lesson-media").download(it.storage_path);
+          if (dlErr) throw dlErr;
+          const path = l.student_id + "/" + crypto.randomUUID() + "-" + safeFileName(it.title);
+          const { error: upErr } = await sb.storage.from("lesson-media").upload(path, blob, blob.type ? { contentType: blob.type } : undefined);
+          if (upErr) throw upErr;
+          const { error: insErr } = await sb.from("lesson_media").insert({ student_id: l.student_id, lesson_date: l.lesson_date, type: it.type === "video" ? "video" : "file", title: it.title, storage_path: path });
+          if (insErr) { await sb.storage.from("lesson-media").remove([path]); throw insErr; }
+          await sb.from("lesson_prep_items").update({ shared_at: new Date().toISOString() }).eq("id", it.id);
+          await Promise.all([refreshPrepItems(), refreshMedia()]);
+          rerender();
+          toast("“" + escHtml(it.title) + "” ligger nu på " + escHtml(possessive(firstName(l.student.name))) + " side.");
+        } catch (err) {
+          shareBtn.disabled = false;
+          toast("Kunne ikke dele filen: " + escHtml(err && err.message ? err.message : String(err)));
+        }
+      });
+      row.querySelector(".pi-remove").addEventListener("click", async () => {
+        if (!confirm("Fjern “" + it.title + "” fra din forberedelse?" + (it.shared_at ? " Elevens kopi bliver liggende." : ""))) return;
+        const { error } = await sb.from("lesson_prep_items").delete().eq("id", it.id);
+        if (error) { toast("Kunne ikke fjerne: " + escHtml(error.message)); return; }
+        await sb.storage.from("lesson-media").remove([it.storage_path]);
+        await refreshPrepItems();
+        rerender();
+      });
+    });
+  }
+  // Opdaterer korte plan-resuméer (Elever-oversigten) uden at tegne alt om.
+  function refreshPlanSummaries() {
+    if (!document.getElementById("view-students").classList.contains("active")) return;
+    if (!state.studentPageId) renderStudentsOverview(studentRows());
   }
 
   // ═══════════════════════ I DAG ═══════════════════════
@@ -1365,15 +1563,11 @@
         '<div class="lesson-quicknote">' +
         (lastEntry ? '<p class="lesson-lastnote"><span class="ll-label">Sidste gang (' + formatDate(lastEntry.lesson_date) + ')</span>' + lastEntry.summary + "</p>" : "") +
         (lastTeacherEntry ? '<p class="lesson-lastnote" style="opacity:0.85;"><span class="ll-label">Din private note (' + formatDate(lastTeacherEntry.lesson_date) + ')</span>' + lastTeacherEntry.note + "</p>" : "") +
-        '<label class="field"><span>Note til i dag — hvad skal I kigge på?</span><textarea class="prep-note-inline" placeholder="F.eks. tempo på venstre hånd, ny etude, spørg om koncertnervøsitet …">' + (a.student.current_focus || "") + "</textarea></label>" +
+        '<div class="today-prep"></div>' +
         "</div>" +
         '<div class="lesson-card-detail" hidden></div>';
 
-      const prepEl = card.querySelector(".prep-note-inline");
-      prepEl.addEventListener("blur", async () => {
-        const { error } = await sb.from("students").update({ current_focus: prepEl.value }).eq("id", a.student_id);
-        if (!error) { a.student.current_focus = prepEl.value; toast("Note gemt til " + a.student.name + "s lektion i dag."); }
-      });
+      mountPrepBlock(card.querySelector(".today-prep"), a);
 
       card.querySelector(".see-student-page").addEventListener("click", () => showStudentPage(a.student_id, "view"));
       const openBtn = card.querySelector(".open-lesson");
@@ -1423,7 +1617,7 @@
       (doneAlready
         ? '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">Fremmøde er allerede registreret. Du kan stadig sende en note og lægge video, filer eller akkordark op herunder.</p>' +
           '<button class="btn btn-primary btn-small register-attendance">Send note til eleven</button>'
-        : '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">Tilføjes blandt lektioner der skal faktureres — ' + escHtml(priceLabel(a.student)) + ".</p>" +
+        : '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">Tilføjes blandt lektioner der skal faktureres — ' + (lessonPrice(a) !== null ? escHtml(formatKr(lessonPrice(a))) : "pris ikke sat.") + "</p>" +
           '<button class="btn btn-primary btn-small register-attendance">Registrér fremmøde &amp; send note</button>') +
       '<div style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--border);">' +
       '<label class="field" style="margin-top:0;"><span>Privat note (kun til dig — eleven ser aldrig denne)</span><textarea class="teacher-note" placeholder="Til dig selv — fx hvad eleven kæmper med, hvad I skal huske til næste gang, forældrekontakt osv."></textarea></label>' +
@@ -1495,8 +1689,8 @@
       toast("Privat note gemt — eleven ser den aldrig.");
     });
     detail.querySelector(".register-attendance").addEventListener("click", async () => {
-      // Hver elev har sin egen pris (students.lesson_price).
-      const price = a.student.lesson_price === null || a.student.lesson_price === undefined ? 0 : a.student.lesson_price;
+      // Prisen er fastlåst på lektionen (afhænger af stedet) — se lessonPrice().
+      const price = lessonPrice(a) === null ? 0 : lessonPrice(a);
       const noteText = (noteEl ? noteEl.value : "").trim();
       const prevAtt = attendanceForDate(a.student_id, lessonDateIso);
       if (prevAtt && prevAtt.status === "done") {
@@ -1632,7 +1826,7 @@
       const colorKey = studentColorKey(idx);
       const next = r.next;
       const mediaCount = lessonMedia.filter((m) => m.student_id === st.id).length;
-      const plan = (st.current_focus || "").trim();
+      const plan = ((next && next.note) || "").trim();
       return (
         '<div class="lesson-card color-' + colorKey + '" data-id="' + st.id + '">' +
         '<div class="lesson-card-top"><span class="lesson-avatar color-' + colorKey + '">' + escHtml(initials(st.name)) + "</span>" +
@@ -1809,48 +2003,34 @@
     });
   }
 
-  // ── Planlæg næste lektion ──
-  // Planen gemmes i students.current_focus — samme felt som "Note til i
-  // dag — hvad skal I kigge på?" på elevens kort under "I dag", så den står
-  // klar der på lektionsdagen. Den vises ikke på elevens side.
+  // ── Planlæg & book ──
+  // Hver kommende lektion med sin egen plan og private forberedelse (samme
+  // blok som under "Lektioner" og på "I dag"-kortet).
   function renderStudentPlanPane(st, next) {
     const pane = document.getElementById("stu-pane-plan");
     const lastNote = lastNoteFor(st.id);
     const lastPriv = lastTeacherNoteFor(st.id);
     const upcoming = upcomingLessonsFor(st.id);
     pane.innerHTML =
-      '<p class="stu-field-label" style="margin-top:0;">Bookede lektioner</p>' +
-      (upcoming.length
-        ? upcoming.map((l) => '<div class="lesson-row"><span class="mono-date">' + escHtml(formatDate(l.lesson_date)) + '</span><span class="mono-time" style="width:auto;">' + l.start_time.slice(0, 5) + "–" + l.end_time.slice(0, 5) + '</span><span class="row-title" style="font-size:13.5px;">' + escHtml(l.location || "") + "</span></div>").join("")
-        : '<p class="empty-state" style="padding:6px 0;">Ingen lektion booket endnu.</p>') +
-      '<button type="button" class="btn btn-ghost btn-small" id="stu-book-toggle" style="margin-top:10px;">+ Book lektion for ' + escHtml(firstName(st.name)) + "</button>" +
-      '<div id="stu-book-form" class="book-form" hidden></div>' +
-      '<p class="stu-field-label">Plan til næste lektion</p>' +
       (lastNote ? '<p class="lesson-lastnote"><span class="ll-label">Sidste note til eleven (' + escHtml(formatDate(lastNote.lesson_date)) + ")</span>" + escHtml(lastNote.summary) + "</p>" : "") +
       (lastPriv ? '<p class="lesson-lastnote" style="opacity:0.85;margin-top:8px;"><span class="ll-label">Din sidste private note (' + escHtml(formatDate(lastPriv.lesson_date)) + ")</span>" + escHtml(lastPriv.note) + "</p>" : "") +
-      '<label class="field"><span>Hvad skal I kigge på næste gang?</span>' +
-      '<textarea id="stu-plan-text" rows="5" placeholder="F.eks. C-dur og G7, venstre hånd i tempo 80, ny sang: …">' + escHtml(st.current_focus || "") + "</textarea></label>" +
-      '<p style="font-size:12.5px;color:var(--ink-soft);margin:8px 0 12px;">Står klar på elevens kort under “I dag” på lektionsdagen. Eleven ser den ikke.</p>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-      '<button type="button" class="btn btn-primary btn-small" id="stu-plan-save">Gem plan</button>' +
-      '<button type="button" class="btn btn-ghost btn-small" id="stu-plan-to-material">📎 Læg materiale op til lektionen</button>' +
-      "</div>";
+      '<p class="stu-field-label">Kommende lektioner</p>' +
+      (upcoming.length ? '<div id="stu-plan-list"></div>' : '<p class="empty-state" style="padding:6px 0;">Ingen lektion booket endnu.</p>') +
+      '<button type="button" class="btn btn-ghost btn-small" id="stu-book-toggle" style="margin-top:12px;">+ Book lektion for ' + escHtml(firstName(st.name)) + "</button>" +
+      '<div id="stu-book-form" class="book-form" hidden></div>';
+    const listEl = pane.querySelector("#stu-plan-list");
+    upcoming.forEach((l) => {
+      const card = document.createElement("div");
+      card.className = "lesson-card plan-card";
+      card.innerHTML = '<div class="lesson-card-top" style="flex-wrap:wrap;"><span class="mono-date" style="width:auto;">' + escHtml(formatDate(l.lesson_date)) + "</span>" + lessonHeadHtml(l) + '<button type="button" class="btn-text danger lesson-cancel">Aflys</button></div><div class="prep-slot"></div>';
+      card.querySelector(".lesson-cancel").addEventListener("click", () => cancelLesson(l));
+      mountPrepBlock(card.querySelector(".prep-slot"), l);
+      listEl.appendChild(card);
+    });
     pane.querySelector("#stu-book-toggle").addEventListener("click", () => {
       const f = pane.querySelector("#stu-book-form");
       if (!f.hidden) { f.hidden = true; return; }
       wireBookingForm(f, st.id, null);
-    });
-    pane.querySelector("#stu-plan-save").addEventListener("click", async () => {
-      const val = pane.querySelector("#stu-plan-text").value;
-      const { error } = await sb.from("students").update({ current_focus: val }).eq("id", st.id);
-      if (error) { toast("Kunne ikke gemme planen: " + escHtml(error.message)); return; }
-      st.current_focus = val;
-      toast("Planen for " + escHtml(possessive(firstName(st.name))) + " næste lektion er gemt.");
-    });
-    pane.querySelector("#stu-plan-to-material").addEventListener("click", () => {
-      if (next) state.studentMaterialDate[st.id] = next.lesson_date;
-      state.studentPane = "material";
-      renderStudentPages();
     });
   }
 
