@@ -254,6 +254,17 @@
 
   footer.site { border-top: 1px solid var(--border-soft); padding: 22px 0 40px; text-align: center; color: var(--ink-faint); font-size: 12.5px; }
 
+  /* ───────────────────────── Book lektion / ny elev ───────────────────────── */
+  .book-form { margin-top: 14px; }
+  .book-form .bf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0 14px; }
+  .book-form .field { margin-top: 10px; }
+  .lesson-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--border-soft); }
+  .lesson-row.cancelled { opacity: 0.55; }
+  .lesson-day-head { margin-top: 18px; display: flex; align-items: baseline; gap: 10px; }
+  .lesson-day-head:first-child { margin-top: 0; }
+  .price-edit { display: inline-flex; align-items: center; gap: 6px; }
+  .price-edit input { width: 84px; font-family: inherit; font-size: 13.5px; color: var(--ink); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; }
+
   /* ───────────────────────── Elever ───────────────────────── */
   .stu-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .stu-card-meta { font-size: 13px; color: var(--ink-soft); margin-top: 8px; line-height: 1.5; }
@@ -308,14 +319,14 @@
   }
 </style>
 
-<div class="skiss-badge">Rigtig database og rigtig login — kølisten, tildelte tider og fremmøde du registrerer her er ægte. Kalenderinvitationer og fakturering via e-conomic kobles på i et senere trin.</div>
+<div class="skiss-badge">Rigtig database og rigtig login — kølisten, bookede lektioner og fremmøde du registrerer her er ægte. Kalenderinvitationer og fakturering via e-conomic kobles på i et senere trin.</div>
 
 <header class="site">
   <div class="wrap brand-row">
     <div class="wordmark"><span class="mark">♪</span><span class="name">Olles lille musikskole — lærer</span></div>
     <div class="tabs" role="tablist" aria-label="Vis side" id="laerer-tabs" hidden>
       <button class="tab-btn active" data-tab="today" role="tab" aria-selected="true" id="tab-btn-today">I dag</button>
-      <button class="tab-btn" data-tab="teachdays" role="tab" aria-selected="false" id="tab-btn-teachdays">Undervisningsdage</button>
+      <button class="tab-btn" data-tab="teachdays" role="tab" aria-selected="false" id="tab-btn-teachdays">Lektioner</button>
       <button class="tab-btn" data-tab="planning" role="tab" aria-selected="false" id="tab-btn-planning">Planlægning</button>
       <button class="tab-btn" data-tab="students" role="tab" aria-selected="false" id="tab-btn-students">Elever</button>
     </div>
@@ -390,16 +401,18 @@
     </div>
   </section>
 
-  <!-- ═══════════════════════ UNDERVISNINGSDAGE ═══════════════════════ -->
+  <!-- ═══════════════════════ LEKTIONER ═══════════════════════
+       Ingen faste tider længere (Olles beslutning 2026-11-26): hver lektion
+       bookes enkeltvis — af Claude i chatten (så kommer den også i Google
+       Kalender med invitation) eller her med "Book lektion". -->
   <section class="view" id="view-teachdays">
     <div class="wrap">
-      <div class="page-head"><h1>Undervisningsdage</h1><p>Bruges sjældent — typisk ved terminstart eller når elevholdet ændrer sig. Hurtigt overblik over hvilke dage du underviser fremover. Aflys en hel dag med ét klik — alle berørte elever får en mail, som du kan redigere for denne ene gang, før den sendes. Eller opret en ekstra undervisningsdag ud over det faste skema — så sendes individuelle kalenderinvitationer til de valgte elever.</p></div>
-
+      <div class="page-head"><h1>Lektioner</h1><p>Alle bookede lektioner. Book en lektion her — eller bed Claude om at booke den, så kommer den også i din Google Kalender med en invitation til eleven.</p></div>
       <div class="panel">
-        <div class="section-label"><span>Undervisningsdage</span><span class="count-chip" id="teachdays-count">0</span></div>
-        <div id="teachdays-list"></div>
-        <button class="btn-text" id="add-teachday-toggle" style="margin-top:14px;">+ Opret ekstra undervisningsdag</button>
-        <div id="add-teachday-form" hidden></div>
+        <div class="section-label"><span>Kommende lektioner</span><span class="count-chip" id="teachdays-count">0</span></div>
+        <button class="btn btn-primary btn-small" id="book-toggle">+ Book lektion</button>
+        <div id="book-form" class="book-form" hidden></div>
+        <div id="teachdays-list" style="margin-top:16px;"></div>
       </div>
     </div>
   </section>
@@ -407,35 +420,24 @@
   <!-- ═══════════════════════ PLANLÆGNING ═══════════════════════ -->
   <section class="view" id="view-planning">
     <div class="wrap">
-      <div class="page-head"><h1>Planlægning</h1><p>Tildel faste tider i ro og mag — intet oprettes i Google Kalender, før du udgiver.</p></div>
+      <div class="page-head"><h1>Planlægning</h1><p>Venteliste, elever, priser og konti — og afstemning af lektioner.</p></div>
 
       <div class="panel">
         <div class="section-label"><span>Venteliste</span><span class="count-chip" id="waitlist-count">0</span></div>
-        <p class="section-sub">I den rækkefølge eleverne har skrevet sig op.</p>
+        <p class="section-sub">I den rækkefølge eleverne har skrevet sig op. “Opret som elev” gør dem til elev — tiderne booker du bagefter.</p>
         <div id="waitlist-list"></div>
-        <button class="btn-text" id="add-student-toggle" style="margin-top:14px;">+ Tilføj elev direkte (uden venteliste)</button>
-        <div id="add-student-form" hidden></div>
       </div>
 
       <div class="panel">
-        <div class="section-label"><span>Skema-udkast</span><span class="count-chip" id="draft-count">0</span></div>
-        <p class="section-sub">Test og ret så meget du vil. Markér dem du er færdig med — resten røres ikke.</p>
-        <div class="row-list" id="draft-list"></div>
-        <div class="panel-footer">
-          <button class="btn btn-primary" id="publish-btn" disabled>Opret i Google Kalender (valgte)</button>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="section-label"><span>Faste tider lige nu</span><span class="count-chip" id="active-count">0</span></div>
-        <p class="section-sub">Ugeoversigt — hele skemaet på én gang.</p>
-        <div class="week-grid" id="week-grid"></div>
-        <div class="row-list" id="active-list"></div>
+        <div class="section-label"><span>Elever</span><span class="count-chip" id="active-count">0</span></div>
+        <p class="section-sub">Pris pr. lektion, kontakt og elevkonto.</p>
+        <button class="btn btn-ghost btn-small" id="add-student-toggle">+ Ny elev</button>
+        <div id="add-student-form" class="book-form" hidden></div>
+        <div class="row-list" id="active-list" style="margin-top:10px;"></div>
       </div>
 
       <div class="panel">
         <div class="section-label"><span>Afstemning</span></div>
-        <div class="sync-note"><span class="dot"></span>Sidst afstemt med Google Kalender: i dag kl. 07:12 (automatisk hver morgen)</div>
         <div class="cal-legend" id="cal-legend"></div>
         <div class="cal-header" id="cal-month-label"></div>
         <div class="cal-scroll"><div class="cal-grid" id="cal-grid"></div></div>
@@ -446,7 +448,7 @@
           <div class="stat-card"><div class="num" id="stat-cancelled">0</div><div class="label">Aflyste</div></div>
         </div>
         <div class="section-label"><span>Lektioner</span></div>
-        <p class="section-sub">Seneste og kommende tider, med status.</p>
+        <p class="section-sub">Seneste og kommende lektioner, med status.</p>
         <div class="row-list" id="reconciliation-list"></div>
         <div class="section-label" style="margin-top:24px;"><span>Fakturaer</span></div>
         <p class="section-sub">Oprettes automatisk som kladde i slutningen af hver måned — du godkender, så oprettes fakturaen i e-conomic, hvor du trykker "send" en sidste gang.</p>
@@ -463,7 +465,9 @@
   <section class="view" id="view-students">
     <div class="wrap">
       <div id="students-overview-wrap">
-        <div class="page-head"><h1>Elever</h1><p>Overblik over alle elever. Læg materiale på elevens side, planlæg næste lektion, eller se siden præcis som eleven ser den.</p></div>
+        <div class="page-head"><h1>Elever</h1><p>Overblik over alle elever. Læg materiale på elevens side, planlæg og book næste lektion, eller se siden præcis som eleven ser den.</p></div>
+        <div style="margin-bottom:14px;"><button class="btn btn-primary btn-small" id="elever-new-toggle">+ Ny elev</button></div>
+        <div id="elever-new-form" class="panel book-form" hidden style="margin-bottom:16px;"></div>
         <div id="students-overview"></div>
       </div>
       <div id="student-focus" hidden>
@@ -471,10 +475,11 @@
         <div class="panel">
           <div class="stu-focus-head">
             <div><h2 id="stu-focus-name" style="font-size:26px;font-weight:500;"></h2><p id="stu-focus-sub" style="color:var(--ink-soft);font-size:13.5px;margin-top:4px;"></p></div>
+            <div id="stu-focus-price"></div>
           </div>
           <div class="stu-subtabs" role="tablist" aria-label="Vælg hvad du vil gøre">
             <button type="button" class="stu-subtab" data-pane="material" role="tab">📎 Materiale</button>
-            <button type="button" class="stu-subtab" data-pane="plan" role="tab">📝 Planlæg næste lektion</button>
+            <button type="button" class="stu-subtab" data-pane="plan" role="tab">📝 Planlæg &amp; book</button>
             <button type="button" class="stu-subtab" data-pane="view" role="tab">👀 Se som elev</button>
           </div>
           <div class="stu-pane" id="stu-pane-material"></div>
@@ -689,7 +694,7 @@
   // ═══════════════════════ DATA (indlæst fra Supabase) ═══════════════════════
   let waitlist = [];        // rå rækker fra waitlist_signups (status='pending')
   let students = [];        // alle students
-  let assignments = [];     // recurring_assignments + joinet studentnavn/mail, status='published'
+  let lessons = [];         // lessons (bookede lektioner, enkeltvis) + joinet elev. Ingen faste tider længere (2026-11-26).
   let attendanceLog = [];   // alle attendance_log-rækker
   let lessonNotes = [];     // alle lesson_notes-rækker
   let lessonMedia = [];     // alle lesson_media-rækker
@@ -701,8 +706,6 @@
   let teacherDocuments = []; // teacher_documents — lærerens gemte dokumenter (fx akkordark som PDF), kun synlige for læreren
 
   const state = {
-    draftAssignments: [],
-    selectedDraftIds: new Set(),
     todayViewIso: null,     // hvilken dag "I dag"-fanen viser lige nu — sat til dags dato ved opstart, kan navigeres frem/tilbage
   };
   let uid = 200;
@@ -714,7 +717,7 @@
     const [{ data: wl }, { data: stu }, { data: asg }, { data: att }, { data: notes }, { data: tnotes }, { data: media }, { data: cancelled }, { data: extra }, { data: prices }, { data: eprof }, { data: tdocs }] = await Promise.all([
       sb.from("waitlist_signups").select("*").eq("status", "pending").order("created_at", { ascending: true }),
       sb.from("students").select("*"),
-      sb.from("recurring_assignments").select("*").eq("status", "published"),
+      sb.from("lessons").select("*").order("lesson_date", { ascending: true }).order("start_time", { ascending: true }),
       sb.from("attendance_log").select("*"),
       sb.from("lesson_notes").select("*"),
       sb.from("teacher_notes").select("*"),
@@ -732,7 +735,7 @@
     waitlist = wl || [];
     teacherDocuments = tdocs || [];
     students = stu || [];
-    assignments = (asg || []).map((a) => ({ ...a, student: studentById(a.student_id) })).filter((a) => a.student);
+    lessons = (asg || []).map((l) => ({ ...l, student: studentById(l.student_id) })).filter((l) => l.student);
     attendanceLog = att || [];
     lessonNotes = notes || [];
     teacherNotes = tnotes || [];
@@ -748,13 +751,13 @@
     elevProfiles = (data || []).map((r) => ({ student_id: r.student_id, invited_at: r.profiles ? r.profiles.invited_at : null }));
   }
   function profileForStudent(studentId) { return elevProfiles.find((p) => p.student_id === studentId); }
-  async function refreshAssignmentsAndStudents() {
-    const [{ data: stu }, { data: asg }] = await Promise.all([
+  async function refreshLessonsAndStudents() {
+    const [{ data: stu }, { data: les }] = await Promise.all([
       sb.from("students").select("*"),
-      sb.from("recurring_assignments").select("*").eq("status", "published"),
+      sb.from("lessons").select("*").order("lesson_date", { ascending: true }).order("start_time", { ascending: true }),
     ]);
     students = stu || [];
-    assignments = (asg || []).map((a) => ({ ...a, student: studentById(a.student_id) })).filter((a) => a.student);
+    lessons = (les || []).map((l) => ({ ...l, student: studentById(l.student_id) })).filter((l) => l.student);
   }
   async function refreshWaitlist() {
     const { data: wl } = await sb.from("waitlist_signups").select("*").eq("status", "pending").order("created_at", { ascending: true });
@@ -790,10 +793,10 @@
   }
 
   // ═══════════════════════ PLANLÆGNING ═══════════════════════
+  // Ingen faste tider længere: ventelisten bliver til elever ("Opret som
+  // elev"), og lektionerne bookes enkeltvis under fanen "Lektioner".
   function renderPlanning() {
     renderWaitlist();
-    renderDrafts();
-    renderWeekGrid();
     renderActive();
     renderStats();
   }
@@ -811,317 +814,171 @@
       const ago = signup.created_at ? formatDate(signup.created_at.slice(0, 10)) : "";
       row.innerHTML =
         '<div class="wl-top"><span class="wl-num">' + (i + 1) + "</span>" +
-        '<div class="wl-info"><p class="wl-name">' + signup.navn + "</p>" +
-        '<p class="wl-meta">' + signup.email + " · " + (signup.telefon || "") + " · " + (signup.instrument || "") + " · " + ago + "</p>" +
-        (signup.kommentar ? '<p class="wl-message">“' + signup.kommentar + '”</p>' : "") +
-        '<p class="wl-prefs"><b>Ønsker:</b> ' + onsker + "</p></div>" +
-        '<button class="btn-text assign-toggle">Tildel fast tid</button></div>' +
-        '<div class="assign-form" hidden></div>';
-
-      row.querySelector(".assign-toggle").addEventListener("click", () => {
-        const form = row.querySelector(".assign-form");
-        const isOpen = !form.hidden;
-        form.hidden = isOpen ? true : false;
-        if (!isOpen) {
-          form.innerHTML = buildAssignFormHtml();
-          wireAssignForm(form, signup);
+        '<div class="wl-info"><p class="wl-name">' + escHtml(signup.navn) + "</p>" +
+        '<p class="wl-meta">' + escHtml(signup.email) + " · " + escHtml(signup.telefon || "") + " · " + escHtml(signup.instrument || "") + " · " + ago + "</p>" +
+        (signup.kommentar ? '<p class="wl-message">“' + escHtml(signup.kommentar) + '”</p>' : "") +
+        '<p class="wl-prefs"><b>Ønsker:</b> ' + escHtml(onsker) + "</p></div>" +
+        '<button class="btn-text wl-create-toggle">Opret som elev</button></div>' +
+        '<div class="wl-create-form book-form" hidden></div>';
+      row.querySelector(".wl-create-toggle").addEventListener("click", () => {
+        const form = row.querySelector(".wl-create-form");
+        form.hidden = !form.hidden;
+        if (!form.hidden) {
+          wireNewStudentForm(form, { name: signup.navn, email: signup.email, phone: signup.telefon, instrument: signup.instrument, waitlistId: signup.id }, () => {});
         }
       });
       list.appendChild(row);
     });
   }
 
-  function buildAssignFormHtml() {
-    return (
-      '<label class="field" style="margin-top:0;"><span>Ugedag</span><select class="assign-weekday">' +
-      WEEKDAYS.map((d, i) => '<option value="' + i + '">' + d + "</option>").join("") +
-      "</select></label>" +
-      '<label class="field"><span>Starttid</span><input type="time" class="assign-start" value="15:00"></label>' +
-      '<label class="field"><span>Sluttid</span><input type="time" class="assign-end" value="15:45"></label>' +
-      '<label class="field"><span>Instrument</span><input type="text" class="assign-instrument"></label>' +
-      '<label class="check"><input type="checkbox" class="assign-trial"> Prøvelektion (kun denne gang)</label>' +
-      '<button class="btn btn-primary btn-small assign-submit">Læg i udkast</button>'
-    );
-  }
-
-  function wireAssignForm(form, signup) {
-    form.querySelector(".assign-instrument").value = signup.instrument || "";
-    form.querySelector(".assign-submit").addEventListener("click", () => {
-      const weekday = Number(form.querySelector(".assign-weekday").value);
-      const start = form.querySelector(".assign-start").value;
-      const end = form.querySelector(".assign-end").value;
-      const instrument = form.querySelector(".assign-instrument").value.trim() || "Andet";
-      const isTrial = form.querySelector(".assign-trial").checked;
-      if (!start || !end) { toast("Vælg start- og sluttid."); return; }
-
-      state.draftAssignments.push({
-        id: nextId(), name: signup.navn, email: signup.email, phone: signup.telefon, instrument,
-        weekday, start, end, isTrial, waitlistId: signup.id,
-      });
-      renderPlanning();
-      toast(signup.navn + " tilføjet til skema-udkastet — intet oprettet endnu.");
+  // ── Ny elev (samme formular fra Planlægning, Elever og ventelisten) ──
+  function wireNewStudentForm(container, prefill, onDone) {
+    const pf = prefill || {};
+    container.innerHTML =
+      '<div class="bf-grid">' +
+      '<label class="field"><span>Navn</span><input type="text" class="ns-name" value="' + escHtml(pf.name || "") + '"></label>' +
+      '<label class="field"><span>Mailadresse</span><input type="email" class="ns-email" value="' + escHtml(pf.email || "") + '"></label>' +
+      '<label class="field"><span>Telefon</span><input type="tel" class="ns-phone" value="' + escHtml(pf.phone || "") + '"></label>' +
+      '<label class="field"><span>Instrument / ønsker</span><input type="text" class="ns-instrument" value="' + escHtml(pf.instrument || "") + '"></label>' +
+      '<label class="field"><span>Pris pr. lektion (kr.)</span><input type="number" min="0" step="10" class="ns-price" placeholder="fx 300"></label>' +
+      "</div>" +
+      '<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">' +
+      '<button type="button" class="btn btn-primary btn-small ns-submit">Opret elev</button>' +
+      '<button type="button" class="btn-text ns-cancel">Annullér</button></div>';
+    container.hidden = false;
+    container.querySelector(".ns-cancel").addEventListener("click", () => { container.hidden = true; });
+    container.querySelector(".ns-submit").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      const info = {
+        name: container.querySelector(".ns-name").value.trim(),
+        email: container.querySelector(".ns-email").value.trim(),
+        phone: container.querySelector(".ns-phone").value.trim(),
+        instrument: container.querySelector(".ns-instrument").value.trim(),
+        price: container.querySelector(".ns-price").value === "" ? null : Math.round(Number(container.querySelector(".ns-price").value)),
+      };
+      if (!info.name || !info.email) { toast("Udfyld i det mindste navn og mail."); return; }
+      if (info.price !== null && (!Number.isFinite(info.price) || info.price < 0)) { toast("Prisen skal være et tal."); return; }
+      btn.disabled = true;
+      const res = await createStudent(info);
+      btn.disabled = false;
+      if (!res) return;
+      if (pf.waitlistId) await sb.from("waitlist_signups").update({ status: "assigned" }).eq("id", pf.waitlistId);
+      container.hidden = true;
+      await Promise.all([refreshLessonsAndStudents(), refreshWaitlist()]);
+      renderAllViews();
+      toast(escHtml(res.message) + " Book en lektion under “Lektioner”.");
+      if (onDone) onDone(res.id);
     });
   }
 
-  function buildAddStudentFormHtml() {
-    return (
-      '<label class="field" style="margin-top:0;"><span>Navn</span><input type="text" class="new-student-name"></label>' +
-      '<label class="field"><span>Mailadresse</span><input type="email" class="new-student-email"></label>' +
-      '<label class="field"><span>Telefon</span><input type="tel" class="new-student-phone"></label>' +
-      '<label class="field"><span>Ugedag</span><select class="new-student-weekday">' +
-      WEEKDAYS.map((d, i) => '<option value="' + i + '">' + d + "</option>").join("") +
-      "</select></label>" +
-      '<label class="field"><span>Starttid</span><input type="time" class="new-student-start" value="15:00"></label>' +
-      '<label class="field"><span>Sluttid</span><input type="time" class="new-student-end" value="15:45"></label>' +
-      '<label class="field"><span>Instrument</span><input type="text" class="new-student-instrument"></label>' +
-      '<label class="check"><input type="checkbox" class="new-student-trial"> Prøvelektion (kun denne gang)</label>' +
-      '<button class="btn btn-primary btn-small new-student-submit">Læg i udkast</button>'
-    );
+  // Opretter en elev. `students.email` er IKKE unik (søskende må dele mail —
+  // se migrationen "multi_student_accounts"). Findes mailen allerede hos en
+  // elev med et ANDET navn, spørges der om det er samme person (så bruges den
+  // eksisterende elev) eller en ny person, fx en søskende (så oprettes en ny
+  // elev, der kobles på samme login, hvis mailen allerede har et login).
+  async function createStudent(info) {
+    const { data: existingRows } = await sb.from("students").select("id,name").eq("email", info.email);
+    const existing = (existingRows || [])[0] || null;
+    if (existing && existing.name.toLowerCase() === info.name.toLowerCase()) {
+      if (info.price !== null) await sb.from("students").update({ lesson_price: info.price }).eq("id", existing.id);
+      return { id: existing.id, message: existing.name + " findes allerede som elev." };
+    }
+    let sharedWith = null;
+    if (existing) {
+      const same = confirm(
+        "Mailadressen " + info.email + " tilhører allerede eleven “" + existing.name + "”.\n\n" +
+        "Tryk OK hvis “" + info.name + "” og “" + existing.name + "” er SAMME PERSON — så bruges den eksisterende elev.\n" +
+        "Tryk Annullér hvis det er en ANDEN PERSON (fx en søskende med samme mailadresse) — så oprettes en ny elev, der deler login med " + existing.name + "."
+      );
+      if (same) {
+        if (info.price !== null) await sb.from("students").update({ lesson_price: info.price }).eq("id", existing.id);
+        return { id: existing.id, message: "Bruger den eksisterende elev " + existing.name + "." };
+      }
+      sharedWith = existing.name;
+    }
+    const { data: newStu, error } = await sb.from("students")
+      .insert({ name: info.name, email: info.email, phone: info.phone || null, instrument_onske: info.instrument || null, lesson_price: info.price })
+      .select().single();
+    if (error) { toast("Kunne ikke oprette eleven: " + escHtml(error.message)); return null; }
+    if (sharedWith) {
+      try {
+        const { data: existingProfile } = await sb.from("profiles").select("id").eq("email", info.email).maybeSingle();
+        if (existingProfile) await sb.from("account_students").insert({ profile_id: existingProfile.id, student_id: newStu.id });
+      } catch (linkErr) { console.error("Kunne ikke koble ny elev til eksisterende login:", linkErr); }
+    }
+    return { id: newStu.id, message: info.name + " er oprettet" + (sharedWith ? " (deler login med " + sharedWith + ")" : "") + "." };
   }
 
   document.getElementById("add-student-toggle").addEventListener("click", () => {
     const form = document.getElementById("add-student-form");
-    const isOpen = !form.hidden;
-    form.hidden = isOpen ? true : false;
-    if (!isOpen) {
-      form.innerHTML = buildAddStudentFormHtml();
-      wireAddStudentForm(form);
-    }
+    if (!form.hidden) { form.hidden = true; return; }
+    wireNewStudentForm(form, {}, () => {});
   });
 
-  function wireAddStudentForm(form) {
-    form.querySelector(".new-student-submit").addEventListener("click", () => {
-      const name = form.querySelector(".new-student-name").value.trim();
-      const email = form.querySelector(".new-student-email").value.trim();
-      const phone = form.querySelector(".new-student-phone").value.trim();
-      const weekday = Number(form.querySelector(".new-student-weekday").value);
-      const start = form.querySelector(".new-student-start").value;
-      const end = form.querySelector(".new-student-end").value;
-      const instrument = form.querySelector(".new-student-instrument").value.trim() || "Andet";
-      const isTrial = form.querySelector(".new-student-trial").checked;
-      if (!name || !email) { toast("Udfyld i det mindste navn og mail."); return; }
-      if (!start || !end) { toast("Vælg start- og sluttid."); return; }
-
-      state.draftAssignments.push({
-        id: nextId(), name, email, phone, instrument,
-        weekday, start, end, isTrial, waitlistId: null,
-      });
-      renderPlanning();
-      document.getElementById("add-student-form").hidden = true;
-      toast(name + " tilføjet til skema-udkastet — intet oprettet endnu.");
-    });
+  function priceLabel(st) { return st.lesson_price === null || st.lesson_price === undefined ? "Pris ikke sat" : formatKr(st.lesson_price) + " pr. lektion"; }
+  async function saveStudentPrice(st, value) {
+    const v = value === "" ? null : Math.round(Number(value));
+    if (v !== null && (!Number.isFinite(v) || v < 0)) { toast("Prisen skal være et tal."); return false; }
+    const { error } = await sb.from("students").update({ lesson_price: v }).eq("id", st.id);
+    if (error) { toast("Kunne ikke gemme prisen: " + escHtml(error.message)); return false; }
+    st.lesson_price = v;
+    toast("Prisen for " + escHtml(st.name) + " er gemt: " + escHtml(priceLabel(st)) + ".");
+    return true;
   }
-
-  function slotLabel(weekday, start, end) { return WEEKDAYS_SHORT[weekday] + " " + start.slice(0, 5) + "–" + end.slice(0, 5); }
-
-  function renderDrafts() {
-    const list = document.getElementById("draft-list");
-    document.getElementById("draft-count").textContent = state.draftAssignments.length;
-    document.getElementById("publish-btn").textContent = "Opret fast tid (" + state.selectedDraftIds.size + ")";
-    document.getElementById("publish-btn").disabled = state.selectedDraftIds.size === 0;
-
-    if (state.draftAssignments.length === 0) { list.innerHTML = '<p class="empty-state">Intet i udkastet lige nu.</p>'; return; }
-
-    list.innerHTML = "";
-    state.draftAssignments.forEach((a) => {
-      const row = document.createElement("div");
-      row.className = "divider-row";
-      row.innerHTML =
-        '<input type="checkbox" class="draft-check" ' + (state.selectedDraftIds.has(a.id) ? "checked" : "") + ">" +
-        '<span class="row-title"><span class="name">' + a.name + "</span>" +
-        '<span class="tag tag-instr">' + a.instrument + "</span>" +
-        (a.isTrial ? '<span class="tag tag-trial">Prøvelektion</span>' : '<span class="tag tag-recurring">' + slotLabel(a.weekday, a.start, a.end) + " hver uge</span>") +
-        "</span>" +
-        '<button class="btn-text danger remove-draft">Fjern</button>';
-
-      row.querySelector(".draft-check").addEventListener("change", (e) => {
-        e.target.checked ? state.selectedDraftIds.add(a.id) : state.selectedDraftIds.delete(a.id);
-        renderDrafts();
-      });
-      row.querySelector(".remove-draft").addEventListener("click", () => {
-        state.draftAssignments = state.draftAssignments.filter((d) => d.id !== a.id);
-        state.selectedDraftIds.delete(a.id);
-        renderPlanning();
-      });
-      list.appendChild(row);
-    });
+  // Lille "ret pris"-felt, brugt i Planlægning og i Elever.
+  function priceEditHtml(st) {
+    return '<span class="price-edit"><input type="number" min="0" step="10" class="price-input" value="' + (st.lesson_price === null || st.lesson_price === undefined ? "" : st.lesson_price) + '" placeholder="kr." aria-label="Pris pr. lektion"><span style="font-size:12.5px;color:var(--ink-soft);">kr./lektion</span><button type="button" class="btn-text price-save">Gem</button></span>';
   }
-
-  document.getElementById("publish-btn").addEventListener("click", async () => {
-    const toPublish = state.draftAssignments.filter((a) => state.selectedDraftIds.has(a.id));
-    if (toPublish.length === 0) return;
-    const btn = document.getElementById("publish-btn");
-    btn.disabled = true;
-
-    // VIGTIGT (2026-08-23): elever findes/oprettes ud fra mail. `students.email`
-    // er IKKE længere unik (søskende må gerne dele mailadresse — se migrationen
-    // "multi_student_accounts"), så hvis den indtastede mail allerede tilhører en
-    // anden elev, spørges der om det er samme person (fx en tidligere tastefejl i
-    // navnet, som skal rettes) eller en ny person (fx en søskende) — i så fald
-    // oprettes en helt separat elevrække, og hvis den mail allerede har et login,
-    // kobles den nye elev straks ind på samme konto (account_students), så
-    // familien kan se begge/alle børn med det samme.
-    //
-    // Tidligere lagde koden altid den nye tid STILLE ind under den EKSISTERENDE
-    // elevs navn ved mail-kollision, uden at nogen ny elev nogensinde blev
-    // oprettet — det så ud som om personen "forsvandt" ("Pippi forsvandt"-fejlen).
-    const succeededIds = new Set();
-    const messages = [];
-
-    for (const a of toPublish) {
-      let studentId = null;
-      let mergedInto = null;
-      let sharedWith = null;
-      const { data: existing } = await sb.from("students").select("id,name").eq("email", a.email).maybeSingle();
-      if (existing && existing.name !== a.name) {
-        const sameSame = confirm(
-          "Mailadressen " + a.email + " er allerede registreret som eleven “" + existing.name + "” i systemet.\n\n" +
-          "Tryk OK hvis “" + a.name + "” og “" + existing.name + "” er SAMME PERSON (fx en tidligere tastefejl i navnet) — så bruges den eksisterende elevs data.\n" +
-          "Tryk Annullér hvis det er en ANDEN PERSON (fx en søskende, der bruger samme mailadresse) — så oprettes en ny, separat elev, der deler login med " + existing.name + "."
-        );
-        if (sameSame) {
-          mergedInto = existing.name;
-          studentId = existing.id;
-        } else {
-          const { data: newStu, error } = await sb.from("students").insert({ name: a.name, email: a.email, phone: a.phone, instrument_onske: a.instrument }).select().single();
-          if (error) { toast("Kunne ikke oprette elev " + a.name + ": " + error.message); continue; }
-          studentId = newStu.id;
-          sharedWith = existing.name;
-        }
-      } else if (existing) {
-        studentId = existing.id;
-      } else {
-        const { data: newStu, error } = await sb.from("students").insert({ name: a.name, email: a.email, phone: a.phone, instrument_onske: a.instrument }).select().single();
-        if (error) { toast("Kunne ikke oprette elev " + a.name + ": " + error.message); continue; }
-        studentId = newStu.id;
-      }
-
-      // Ny elev der deler mail med en, der allerede har et login — kobl straks
-      // ind på samme konto, så familien ikke selv skal bede om det bagefter.
-      if (sharedWith) {
-        try {
-          const { data: existingProfile } = await sb.from("profiles").select("id").eq("email", a.email).maybeSingle();
-          if (existingProfile) await sb.from("account_students").insert({ profile_id: existingProfile.id, student_id: studentId });
-        } catch (linkErr) {
-          console.error("Kunne ikke koble ny elev til eksisterende login:", linkErr);
-        }
-      }
-
-      const { error: asgErr } = await sb.from("recurring_assignments").insert({
-        student_id: studentId, weekday: a.weekday, start_time: a.start, end_time: a.end,
-        instrument: a.instrument, is_trial: a.isTrial, status: "published", published_at: new Date().toISOString(),
-      });
-      if (asgErr) { toast("Kunne ikke oprette fast tid for " + a.name + ": " + asgErr.message); continue; }
-      if (a.waitlistId) await sb.from("waitlist_signups").update({ status: "assigned" }).eq("id", a.waitlistId);
-      succeededIds.add(a.id);
-      messages.push(
-        mergedInto ? "Fast tid for " + a.name + " tilføjet til " + mergedInto + "s skema" :
-        sharedWith ? a.name + ": fast tid oprettet (deler login med " + sharedWith + ")" :
-        a.name + ": fast tid oprettet"
-      );
-    }
-
-    // Kun de rader der rent faktisk lykkedes fjernes fra udkastet — springes en
-    // elev over pga. mail-kollision, bliver den liggende i udkastet så Olle kan
-    // rette mailen og prøve igen, i stedet for at forsvinde sporløst.
-    state.draftAssignments = state.draftAssignments.filter((a) => !succeededIds.has(a.id));
-    succeededIds.forEach((id) => state.selectedDraftIds.delete(id));
-    await Promise.all([refreshAssignmentsAndStudents(), refreshWaitlist()]);
-    renderPlanning();
-    toast(messages.length ? messages.join(" · ") + ". Google Kalender-invitation følger i næste fase." : "Ingen ændringer.");
-  });
-
-  function renderWeekGrid() {
-    const grid = document.getElementById("week-grid");
-    grid.innerHTML = "";
-    WEEKDAYS.forEach((day, wd) => {
-      const col = document.createElement("div");
-      col.className = "week-col";
-      const dayAssignments = assignments.filter((a) => a.weekday === wd).sort((a, b) => a.start_time.localeCompare(b.start_time));
-      col.innerHTML =
-        '<p class="week-day-label">' + WEEKDAYS_SHORT[wd] + "</p>" +
-        (dayAssignments.length
-          ? dayAssignments.map((a) => '<div class="week-slot"><span class="wtime">' + a.start_time.slice(0, 5) + "–" + a.end_time.slice(0, 5) + '</span><span class="wname">' + a.student.name + "</span></div>").join("")
-          : '<div class="week-empty">—</div>');
-      grid.appendChild(col);
+  function wirePriceEdit(scope, st, after) {
+    scope.querySelector(".price-save").addEventListener("click", async () => {
+      const ok = await saveStudentPrice(st, scope.querySelector(".price-input").value);
+      if (ok && after) after();
     });
   }
 
   function toInvoiceCount(studentId) { return attendanceLog.filter((e) => e.student_id === studentId && e.status === "done" && !e.invoice_id).length; }
   function invoicedCount(studentId) { return attendanceLog.filter((e) => e.student_id === studentId && e.status === "done" && e.invoice_id).length; }
+  function nextLessonFor(studentId) {
+    const today = isoToday();
+    return lessons.find((l) => l.student_id === studentId && l.status === "booked" && l.lesson_date >= today) || null;
+  }
+  function lessonWhenLabel(l) { return formatDate(l.lesson_date) + " kl. " + l.start_time.slice(0, 5); }
 
   function renderActive() {
     const list = document.getElementById("active-list");
-    document.getElementById("active-count").textContent = assignments.length;
-    if (assignments.length === 0) { list.innerHTML = '<p class="empty-state">Ingen faste tider endnu.</p>'; return; }
+    const sorted = students.slice().sort((x, y) => x.name.localeCompare(y.name, "da"));
+    document.getElementById("active-count").textContent = sorted.length;
+    if (sorted.length === 0) { list.innerHTML = '<p class="empty-state">Ingen elever endnu.</p>'; return; }
 
     list.innerHTML = "";
-    assignments.forEach((a) => {
-      const toBill = toInvoiceCount(a.student_id);
+    sorted.forEach((st) => {
+      const toBill = toInvoiceCount(st.id);
+      const next = nextLessonFor(st.id);
       const row = document.createElement("div");
       row.className = "divider-row";
       row.style.flexWrap = "wrap";
       row.innerHTML =
-        '<span class="row-title"><span class="name">' + a.student.name + "</span>" +
-        '<span class="tag tag-instr">' + (a.instrument || "") + "</span>" +
-        '<span class="tag tag-recurring">' + slotLabel(a.weekday, a.start_time, a.end_time) + " hver uge</span>" +
+        '<span class="row-title"><span class="name">' + escHtml(st.name) + "</span>" +
+        (next ? '<span class="tag tag-recurring">Næste: ' + escHtml(lessonWhenLabel(next)) + "</span>" : '<span class="tag">Ingen lektion booket</span>') +
         (toBill > 0 ? '<span class="tag tag-tobill">' + toBill + " til fakturering</span>" : "") + "</span>" +
-        // Kontaktoplysninger vist direkte her (ikke kun inde på "I dag"s
-        // lektionskort), så Olle kan finde en elevs mail/telefon uden at
-        // skulle vente på selve undervisningsdagen.
-        (a.student.phone ? '<a class="btn-text" style="text-decoration:none;" href="tel:' + a.student.phone + '">📞 ' + a.student.phone + "</a>" : "") +
-        '<a class="btn-text" style="text-decoration:none;" href="mailto:' + a.student.email + '">✉ ' + a.student.email + "</a>" +
-        '<button class="btn-text edit-time-toggle">Rediger tid</button>' +
+        priceEditHtml(st) +
+        (st.phone ? '<a class="btn-text" style="text-decoration:none;" href="tel:' + escHtml(st.phone) + '">📞 ' + escHtml(st.phone) + "</a>" : "") +
+        '<a class="btn-text" style="text-decoration:none;" href="mailto:' + escHtml(st.email) + '">✉ ' + escHtml(st.email) + "</a>" +
         '<button class="btn-text view-student-page">Se elevens side</button>' +
-        '<span class="account-ctrl" style="white-space:nowrap;"></span>' +
-        '<div class="assign-form" hidden style="flex-basis:100%;"></div>';
-      wireAccountCtrl(row.querySelector(".account-ctrl"), a.student);
-      // Viser elevens egen side under fanen "Elevsider".
-      row.querySelector(".view-student-page").addEventListener("click", () => showStudentPage(a.student_id, "view"));
-      row.querySelector(".edit-time-toggle").addEventListener("click", () => {
-        const form = row.querySelector(".assign-form");
-        const isOpen = !form.hidden;
-        form.hidden = isOpen ? true : false;
-        if (!isOpen) {
-          form.innerHTML = buildEditAssignFormHtml(a);
-          wireEditAssignForm(form, a);
-        }
-      });
+        '<span class="account-ctrl" style="white-space:nowrap;"></span>';
+      wireAccountCtrl(row.querySelector(".account-ctrl"), st);
+      wirePriceEdit(row, st);
+      row.querySelector(".view-student-page").addEventListener("click", () => showStudentPage(st.id, "view"));
       list.appendChild(row);
     });
   }
 
-  // Læreren skal kunne ændre en allerede oprettet fast tid i efterhand (ugedag,
-  // start/sluttid, instrument) — fx hvis en elev bytter dag. Opdaterer
-  // recurring_assignments direkte (ingen udkast/publicér-trin, da tiden allerede
-  // er live). Google Kalender-synk af selve ændringen er ikke koblet til endnu.
-  function buildEditAssignFormHtml(a) {
-    return (
-      '<label class="field" style="margin-top:0;"><span>Ugedag</span><select class="edit-weekday">' +
-      WEEKDAYS.map((d, i) => '<option value="' + i + '"' + (i === a.weekday ? " selected" : "") + ">" + d + "</option>").join("") +
-      "</select></label>" +
-      '<label class="field"><span>Starttid</span><input type="time" class="edit-start" value="' + a.start_time.slice(0, 5) + '"></label>' +
-      '<label class="field"><span>Sluttid</span><input type="time" class="edit-end" value="' + a.end_time.slice(0, 5) + '"></label>' +
-      '<label class="field"><span>Instrument</span><input type="text" class="edit-instrument" value="' + (a.instrument || "") + '"></label>' +
-      '<button class="btn btn-primary btn-small edit-save">Gem ændring</button>' +
-      '<button type="button" class="btn-text danger edit-cancel">Annullér</button>'
-    );
-  }
-  function wireEditAssignForm(form, a) {
-    form.querySelector(".edit-save").addEventListener("click", async () => {
-      const weekday = Number(form.querySelector(".edit-weekday").value);
-      const start = form.querySelector(".edit-start").value;
-      const end = form.querySelector(".edit-end").value;
-      const instrument = form.querySelector(".edit-instrument").value.trim() || "Andet";
-      if (!start || !end) { toast("Vælg start- og sluttid."); return; }
-      const { error } = await sb.from("recurring_assignments").update({ weekday, start_time: start, end_time: end, instrument }).eq("id", a.id);
-      if (error) { toast("Kunne ikke gemme ændringen: " + error.message); return; }
-      await refreshAssignmentsAndStudents();
-      renderActive();
-      renderToday();
-      toast("Undervisningstiden for " + a.student.name + " er opdateret.");
-    });
-    form.querySelector(".edit-cancel").addEventListener("click", () => { form.hidden = true; });
+  // Tegner alle faner om efter en ændring (bruges efter booking/ny elev).
+  function renderAllViews() {
+    renderToday();
+    renderTeachDays();
+    renderPlanning();
+    renderStudentPages();
   }
 
   // ═══════════════════════ ELEVKONTO — opret + send invitation ═══════════════════════
@@ -1207,26 +1064,25 @@
     cancelled: '<span class="tag tag-cancelled">Aflyst</span>',
   };
   function isCancelled(iso) { return cancelledDates.some((c) => c.lesson_date === iso); }
-  function classifyDate(studentId, iso) {
-    if (isCancelled(iso)) return "cancelled";
-    const todayIso = isoToday();
-    if (iso > todayIso) return "upcoming";
-    const log = attendanceLog.find((e) => e.student_id === studentId && e.lesson_date === iso);
+  function attendanceForLesson(l) {
+    return attendanceLog.find((e) => (e.lesson_id && e.lesson_id === l.id) || (e.student_id === l.student_id && e.lesson_date === l.lesson_date)) || null;
+  }
+  function classifyLesson(l) {
+    if (l.status === "cancelled") return "cancelled";
+    const log = attendanceForLesson(l);
     if (log) {
       if (log.status === "cancelled") return "cancelled";
       if (log.status === "no_show") return "tobill";
       return log.invoice_id ? "billed" : "tobill";
     }
-    return "tobill";
+    return l.lesson_date >= isoToday() ? "upcoming" : "tobill";
   }
   function buildReconciliationEvents() {
-    const events = [];
-    assignments.forEach((a) => {
-      datesForWeekday(a.weekday, 4, 4).forEach((iso) => {
-        events.push({ name: a.student.name, instrument: a.instrument || "", date: iso, start: a.start_time.slice(0, 5), status: classifyDate(a.student_id, iso) });
-      });
-    });
-    return events.sort((x, y) => x.date.localeCompare(y.date) || x.start.localeCompare(y.start));
+    const from = isoAddDays(isoToday(), -35), to = isoAddDays(isoToday(), 35);
+    return lessons
+      .filter((l) => l.lesson_date >= from && l.lesson_date <= to)
+      .map((l) => ({ name: l.student.name, place: l.location || "", date: l.lesson_date, start: l.start_time.slice(0, 5), status: classifyLesson(l) }))
+      .sort((x, y) => x.date.localeCompare(y.date) || x.start.localeCompare(y.start));
   }
 
   function renderMonthCalendar(events) {
@@ -1315,8 +1171,8 @@
       row.innerHTML =
         '<span class="mono-date">' + formatDate(e.date) + "</span>" +
         '<span class="mono-time" style="width:auto;">' + e.start + "</span>" +
-        '<span class="row-title"><span class="name">' + e.name + "</span>" +
-        '<span class="tag tag-instr">' + e.instrument + "</span></span>" +
+        '<span class="row-title"><span class="name">' + escHtml(e.name) + "</span>" +
+        (e.place ? '<span class="tag tag-instr">' + escHtml(e.place) + "</span>" : "") + "</span>" +
         STATUS_TAG[e.status];
       list.appendChild(row);
     });
@@ -1324,180 +1180,111 @@
     renderInvoices();
   }
 
-  // ═══════════════════════ UNDERVISNINGSDAGE ═══════════════════════
-  function buildUpcomingTeachDays(count) {
-    const map = {};
-    const todayIso = isoToday();
-    assignments.forEach((a) => {
-      datesForWeekday(a.weekday, 0, 8).forEach((iso) => {
-        if (iso < todayIso) return;
-        if (!map[iso]) map[iso] = { students: [] };
-        map[iso].students.push({ name: a.student.name, time: a.start_time.slice(0, 5) });
-      });
-    });
-    extraDays.forEach((d) => {
-      if (d.lesson_date < todayIso) return;
-      if (!map[d.lesson_date]) map[d.lesson_date] = { students: [] };
-      map[d.lesson_date].extra = true;
-      (d.student_ids || []).forEach((sid) => {
-        const s = studentById(sid);
-        const a = assignments.find((x) => x.student_id === sid);
-        map[d.lesson_date].students.push({ name: s ? s.name : "?", time: a ? a.start_time.slice(0, 5) : "—" });
-      });
-    });
-    return Object.keys(map)
-      .sort()
-      .slice(0, count)
-      .map((iso) => ({ date: iso, ...map[iso] }));
+  // ═══════════════════════ LEKTIONER (book / aflys) ═══════════════════════
+  const LOCATIONS = ["Hjemme hos mig", "Hjemme hos eleven", "Online", "Andet sted"];
+  function hhmmPlus(hhmm, minutes) {
+    const [h, m] = hhmm.split(":").map(Number);
+    const t = h * 60 + m + minutes;
+    return String(Math.floor(t / 60) % 24).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0");
   }
+  // Booking-formular. `presetStudentId` vælger eleven på forhånd (fra Elever).
+  function wireBookingForm(container, presetStudentId, onDone) {
+    const sorted = students.slice().sort((x, y) => x.name.localeCompare(y.name, "da"));
+    if (!sorted.length) {
+      container.innerHTML = '<p class="empty-state">Opret først en elev.</p>';
+      container.hidden = false;
+      return;
+    }
+    container.innerHTML =
+      '<div class="bf-grid">' +
+      '<label class="field"><span>Elev</span><select class="bk-student">' +
+      sorted.map((st) => '<option value="' + st.id + '"' + (st.id === presetStudentId ? " selected" : "") + ">" + escHtml(st.name) + "</option>").join("") +
+      "</select></label>" +
+      '<label class="field"><span>Dato</span><input type="date" class="bk-date" value="' + isoToday() + '"></label>' +
+      '<label class="field"><span>Starttid</span><input type="time" class="bk-start" value="15:00"></label>' +
+      '<label class="field"><span>Varighed</span><select class="bk-dur"><option value="30" selected>30 min.</option><option value="45">45 min.</option><option value="60">60 min.</option></select></label>' +
+      '<label class="field"><span>Sted</span><select class="bk-place">' + LOCATIONS.map((p) => "<option>" + p + "</option>").join("") + "</select></label>" +
+      '<label class="field"><span>Note (kun til dig, valgfri)</span><input type="text" class="bk-note" maxlength="200"></label>' +
+      "</div>" +
+      '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:10px;">Lektioner booket her kommer ikke i Google Kalender og giver ingen invitation. Bed Claude om at booke, hvis eleven skal have en invitation.</p>' +
+      '<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">' +
+      '<button type="button" class="btn btn-primary btn-small bk-submit">Book lektion</button>' +
+      '<button type="button" class="btn-text bk-cancel">Annullér</button></div>';
+    container.hidden = false;
+    const dateInput = container.querySelector(".bk-date");
+    dateInput.addEventListener("click", () => { try { if (dateInput.showPicker) dateInput.showPicker(); } catch (e) { /* ignorer */ } });
+    container.querySelector(".bk-cancel").addEventListener("click", () => { container.hidden = true; });
+    container.querySelector(".bk-submit").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      const studentId = container.querySelector(".bk-student").value;
+      const date = dateInput.value;
+      const start = container.querySelector(".bk-start").value;
+      const dur = Number(container.querySelector(".bk-dur").value);
+      if (!date || !start) { toast("Vælg dato og starttid."); return; }
+      const st = studentById(studentId);
+      const clash = lessons.find((l) => l.status === "booked" && l.lesson_date === date && l.start_time.slice(0, 5) === start);
+      if (clash && !confirm("Der er allerede booket " + clash.student.name + " " + formatDate(date) + " kl. " + start + ". Book alligevel?")) return;
+      btn.disabled = true;
+      const { error } = await sb.from("lessons").insert({
+        student_id: studentId, lesson_date: date, start_time: start, end_time: hhmmPlus(start, dur),
+        location: container.querySelector(".bk-place").value, note: container.querySelector(".bk-note").value.trim() || null,
+      });
+      btn.disabled = false;
+      if (error) { toast("Kunne ikke booke lektionen: " + escHtml(error.message)); return; }
+      container.hidden = true;
+      await refreshLessonsAndStudents();
+      renderAllViews();
+      toast("Lektion booket: " + escHtml(st ? st.name : "") + ", " + escHtml(formatDate(date)) + " kl. " + start + ".");
+      if (onDone) onDone();
+    });
+  }
+  document.getElementById("book-toggle").addEventListener("click", () => {
+    const form = document.getElementById("book-form");
+    if (!form.hidden) { form.hidden = true; return; }
+    wireBookingForm(form, null, null);
+  });
 
-  function defaultCancelMessage(iso) {
-    return "Hej!\n\nJeg må desværre aflyse undervisningen " + formatDate(iso) + ". Vi finder en ny tid, næste gang vi ses.\n\nMange hilsner,\nOlle";
+  async function cancelLesson(l) {
+    if (!confirm("Aflys " + l.student.name + "s lektion " + formatDate(l.lesson_date) + " kl. " + l.start_time.slice(0, 5) + "?\n\nEleven får ingen besked automatisk.")) return;
+    const { error } = await sb.from("lessons").update({ status: "cancelled" }).eq("id", l.id);
+    if (error) { toast("Kunne ikke aflyse: " + escHtml(error.message)); return; }
+    await refreshLessonsAndStudents();
+    renderAllViews();
+    toast("Lektionen er aflyst." + (l.google_event_id ? " Husk at slette den i Google Kalender — eller bed Claude om det." : ""));
   }
 
   function renderTeachDays() {
     const list = document.getElementById("teachdays-list");
-    const days = buildUpcomingTeachDays(8);
-    document.getElementById("teachdays-count").textContent = days.filter((d) => !isCancelled(d.date)).length;
-    if (days.length === 0) { list.innerHTML = '<p class="empty-state">Ingen planlagte undervisningsdage endnu.</p>'; return; }
-
+    const today = isoToday();
+    const upcoming = lessons.filter((l) => l.lesson_date >= today);
+    document.getElementById("teachdays-count").textContent = upcoming.filter((l) => l.status === "booked").length;
+    if (!upcoming.length) { list.innerHTML = '<p class="empty-state">Ingen kommende lektioner. Book en med knappen ovenfor — eller bed Claude om det.</p>'; return; }
+    const byDate = {};
+    upcoming.forEach((l) => { (byDate[l.lesson_date] = byDate[l.lesson_date] || []).push(l); });
     list.innerHTML = "";
-    days.forEach((day) => {
-      const cancelled = isCancelled(day.date);
-      const row = document.createElement("div");
-      row.className = "day-row" + (cancelled ? " cancelled" : "");
-      row.innerHTML =
-        '<div class="day-top">' +
-        '<button type="button" class="day-goto" title="Gå til denne dag i \'I dag\'"><p class="day-date">' + formatDate(day.date) + (day.extra ? '<span class="tag tag-instr" style="margin-left:8px;">Ekstra dag</span>' : "") + "</p>" +
-        '<p class="day-sub">' + day.students.length + " lektion" + (day.students.length === 1 ? "" : "er") + " · gå til dagen →</p></button>" +
-        (cancelled
-          ? '<span class="tag tag-cancelled">Aflyst</span>'
-          : '<button class="btn-text danger cancel-day-toggle">Aflys denne dag</button>') +
-        "</div>" +
-        '<div class="day-students">' + day.students.map((s) => '<span class="day-student-chip">' + s.name + " · " + s.time + "</span>").join("") + "</div>" +
-        '<div class="cancel-form" hidden></div>';
-
-      // Klik på selve datoen/blokken hopper direkte til "I dag" for netop den
-      // dag — Olle bad om ikke at skulle klikke sig igennem tomme dage med
-      // ← Forrige/Næste → for at nå en bestemt planlagt undervisningsdag.
-      const gotoBtn = row.querySelector(".day-goto");
-      if (gotoBtn) {
-        gotoBtn.addEventListener("click", () => {
-          state.todayViewIso = day.date;
-          switchView("today");
-        });
-      }
-
-      const toggleBtn = row.querySelector(".cancel-day-toggle");
-      if (toggleBtn) {
-        toggleBtn.addEventListener("click", () => {
-          const form = row.querySelector(".cancel-form");
-          const isOpen = !form.hidden;
-          form.hidden = isOpen ? true : false;
-          if (!isOpen) {
-            form.innerHTML = buildCancelDayFormHtml(day);
-            wireCancelDayForm(form, day);
-          }
-        });
-      }
-      list.appendChild(row);
+    Object.keys(byDate).sort().forEach((iso) => {
+      const head = document.createElement("div");
+      head.className = "lesson-day-head";
+      head.innerHTML = '<button type="button" class="btn-text day-goto" style="font-size:14px;" title="Gå til dagen under “I dag”">' + escHtml(formatDate(iso)) + (iso === today ? " (i dag)" : "") + " →</button>";
+      head.querySelector(".day-goto").addEventListener("click", () => { state.todayViewIso = iso; switchView("today"); });
+      list.appendChild(head);
+      byDate[iso].sort((x, y) => x.start_time.localeCompare(y.start_time)).forEach((l) => {
+        const row = document.createElement("div");
+        row.className = "lesson-row" + (l.status === "cancelled" ? " cancelled" : "");
+        row.innerHTML =
+          '<span class="mono-time" style="width:auto;">' + l.start_time.slice(0, 5) + "–" + l.end_time.slice(0, 5) + "</span>" +
+          '<span class="row-title"><span class="name">' + escHtml(l.student.name) + "</span>" +
+          (l.location ? '<span class="tag tag-instr">' + escHtml(l.location) + "</span>" : "") +
+          (l.google_event_id ? '<span class="tag tag-recurring">I kalenderen</span>' : "") +
+          (l.status === "cancelled" ? '<span class="tag tag-cancelled">Aflyst</span>' : "") +
+          (l.note ? '<span style="display:block;font-size:12.5px;color:var(--ink-soft);margin-top:3px;">' + escHtml(l.note) + "</span>" : "") +
+          "</span>" +
+          (l.status === "booked" ? '<button type="button" class="btn-text danger lesson-cancel">Aflys</button>' : "");
+        const cbtn = row.querySelector(".lesson-cancel");
+        if (cbtn) cbtn.addEventListener("click", () => cancelLesson(l));
+        list.appendChild(row);
+      });
     });
-  }
-
-  function buildCancelDayFormHtml(day) {
-    const names = day.students.map((s) => s.name).join(", ");
-    return (
-      '<p class="cf-recipients"><b>Sendes til:</b> ' + names + "</p>" +
-      '<label class="field" style="margin-top:8px;"><span>Besked til eleverne (kan redigeres for denne ene gang)</span><textarea class="cancel-message" rows="5">' + defaultCancelMessage(day.date) + "</textarea></label>" +
-      '<div style="display:flex;gap:10px;margin-top:12px;">' +
-      '<button class="btn btn-primary btn-small confirm-cancel-day">Bekræft aflysning (' + day.students.length + ")</button>" +
-      '<button class="btn-ghost btn-small close-cancel-day">Annullér</button>' +
-      "</div>"
-    );
-  }
-  function wireCancelDayForm(form, day) {
-    form.querySelector(".confirm-cancel-day").addEventListener("click", async () => {
-      const message = form.querySelector(".cancel-message").value;
-      const { error } = await sb.from("cancelled_lesson_dates").insert({ lesson_date: day.date, message });
-      if (error) { toast("Kunne ikke aflyse dagen: " + error.message); return; }
-      await refreshTeachDays();
-      renderTeachDays();
-      toast("Dagen er markeret aflyst for " + day.students.length + " elev" + (day.students.length === 1 ? "" : "er") + " (" + formatDate(day.date) + "). Rigtig mailudsendelse kobles på i næste fase.");
-    });
-    form.querySelector(".close-cancel-day").addEventListener("click", () => { form.hidden = true; });
-  }
-
-  function uniqueStudentsWithAssignment() {
-    const seen = new Set();
-    return assignments.filter((a) => { if (seen.has(a.student_id)) return false; seen.add(a.student_id); return true; }).map((a) => ({ id: a.student_id, name: a.student.name, time: a.start_time.slice(0, 5) }));
-  }
-
-  document.getElementById("add-teachday-toggle").addEventListener("click", () => {
-    const form = document.getElementById("add-teachday-form");
-    const isOpen = !form.hidden;
-    form.hidden = isOpen ? true : false;
-    if (!isOpen) {
-      form.className = "create-day-form";
-      form.innerHTML = buildCreateDayFormHtml();
-      wireCreateDayForm(form);
-    }
-  });
-  function defaultExtraDayMessage(iso) {
-    const dateStr = iso ? formatDate(iso) : "den nye dag";
-    return "Hej!\n\nJeg har oprettet en ekstra undervisningsdag " + dateStr + ". Sig endelig til, hvis du ikke hører nærmere om tidspunkt.\n\nMange hilsner,\nOlle";
-  }
-
-  function buildCreateDayFormHtml() {
-    const list = uniqueStudentsWithAssignment();
-    return (
-      '<label class="field" style="margin-top:0;"><span>Dato</span><input type="date" class="create-day-date"></label>' +
-      '<label class="field"><span>Hvilke elever gælder det?</span></label>' +
-      '<div class="create-day-select-all-row"><label class="check"><input type="checkbox" class="create-day-select-all" checked> Vælg/fravælg alle</label></div>' +
-      '<div class="day-checklist">' +
-      list.map((s) => '<label><input type="checkbox" class="create-day-student" value="' + s.id + '" checked> ' + s.name + "</label>").join("") +
-      "</div>" +
-      '<label class="check" style="margin-top:10px;"><input type="checkbox" class="create-day-send-mail"> Send også en mail til eleverne</label>' +
-      '<div class="create-day-mail-wrap" hidden>' +
-      '<label class="field" style="margin-top:8px;"><span>Besked til eleverne (valgfri, kan redigeres)</span><textarea class="create-day-message" rows="5">' + defaultExtraDayMessage(null) + "</textarea></label>" +
-      "</div>" +
-      '<div style="display:flex;gap:10px;margin-top:12px;">' +
-      '<button class="btn btn-primary btn-small confirm-create-day">Opret dag</button>' +
-      '<button class="btn-ghost btn-small close-create-day">Annullér</button>' +
-      "</div>"
-    );
-  }
-  function wireCreateDayForm(form) {
-    const dateInput = form.querySelector(".create-day-date");
-    dateInput.addEventListener("click", () => {
-      try { if (dateInput.showPicker) dateInput.showPicker(); } catch (e) { /* ignore — falder tilbage til normal indtastning */ }
-    });
-    const selectAll = form.querySelector(".create-day-select-all");
-    const studentBoxes = Array.from(form.querySelectorAll(".create-day-student"));
-    const sendMailBox = form.querySelector(".create-day-send-mail");
-    const mailWrap = form.querySelector(".create-day-mail-wrap");
-    const messageBox = form.querySelector(".create-day-message");
-
-    selectAll.addEventListener("change", () => { studentBoxes.forEach((box) => { box.checked = selectAll.checked; }); });
-    studentBoxes.forEach((box) => { box.addEventListener("change", () => { selectAll.checked = studentBoxes.every((b) => b.checked); }); });
-    sendMailBox.addEventListener("change", () => { mailWrap.hidden = !sendMailBox.checked; });
-    dateInput.addEventListener("change", () => { if (!messageBox.dataset.dirty) messageBox.value = defaultExtraDayMessage(dateInput.value); });
-    messageBox.addEventListener("input", () => { messageBox.dataset.dirty = "1"; });
-
-    form.querySelector(".confirm-create-day").addEventListener("click", async () => {
-      const dateVal = dateInput.value;
-      const checkedIds = studentBoxes.filter((el) => el.checked).map((el) => el.value);
-      if (!dateVal) { toast("Vælg en dato først."); return; }
-      if (checkedIds.length === 0) { toast("Vælg mindst én elev."); return; }
-      const message = sendMailBox.checked ? messageBox.value : null;
-      const { error } = await sb.from("extra_teaching_days").insert({ lesson_date: dateVal, message, student_ids: checkedIds, send_mail: sendMailBox.checked });
-      if (error) { toast("Kunne ikke oprette dagen: " + error.message); return; }
-      document.getElementById("add-teachday-form").hidden = true;
-      await refreshTeachDays();
-      renderTeachDays();
-      const names = checkedIds.map((id) => { const s = studentById(id); return s ? s.name : "?"; }).join(", ");
-      toast("Ekstra undervisningsdag oprettet " + formatDate(dateVal) + " for " + checkedIds.length + " elev" + (checkedIds.length === 1 ? "" : "er") + " (" + names + "). Rigtig kalenderinvitation/mail kobles på i næste fase.");
-    });
-    form.querySelector(".close-create-day").addEventListener("click", () => { document.getElementById("add-teachday-form").hidden = true; });
   }
 
   // ═══════════════════════ I DAG ═══════════════════════
@@ -1505,11 +1292,11 @@
   function studentColorKey(idx) { return STUDENT_COLOR_KEYS[idx % STUDENT_COLOR_KEYS.length]; }
   function initials(name) { return name.split(" ").filter(Boolean).map((p) => p[0]).join("").toUpperCase().slice(0, 2); }
 
+  // Bookede (ikke aflyste) lektioner på en dato. Hver lektion har samme felter
+  // som de gamle faste tider (student_id, student, start_time …), så "I dag"-
+  // kortene kan bruge dem direkte; `a.id` er lektionens id.
   function lessonsForDate(iso) {
-    const wd = weekdayIdxForIso(iso);
-    if (wd < 0) return [];
-    if (isCancelled(iso)) return [];
-    return assignments.filter((a) => a.weekday === wd);
+    return lessons.filter((l) => l.lesson_date === iso && l.status === "booked").sort((x, y) => x.start_time.localeCompare(y.start_time));
   }
   function lastNoteFor(studentId) {
     const notes = lessonNotes.filter((n) => n.student_id === studentId).sort((a, b) => b.lesson_date.localeCompare(a.lesson_date));
@@ -1538,7 +1325,7 @@
     renderTeacherDocs();
     const el = document.getElementById("today-list");
     const viewIso = state.todayViewIso || isoToday();
-    const lessons = lessonsForDate(viewIso);
+    const dayLessons = lessonsForDate(viewIso);
     const dayNames = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"];
     const dLabel = new Date(viewIso + "T00:00:00");
     const isRealToday = viewIso === isoToday();
@@ -1547,17 +1334,17 @@
     const todayBtn = document.getElementById("day-today");
     if (todayBtn) todayBtn.hidden = isRealToday;
     el.innerHTML = "";
-    if (lessons.length === 0) {
-      const nextDay = findAdjacentTeachingDay(viewIso, 1, 30);
+    if (dayLessons.length === 0) {
+      const nextDay = findAdjacentTeachingDay(viewIso, 1, 180);
       el.innerHTML =
-        '<p class="empty-state">Ingen faste lektioner ' + (isRealToday ? "i dag" : "denne dag") + ".</p>" +
-        (nextDay ? '<p style="text-align:center;margin-top:10px;"><button class="btn-text" id="goto-next-teaching-day">Gå til næste undervisningsdag (' + formatDate(nextDay) + ")</button></p>" : "");
+        '<p class="empty-state">Ingen lektioner booket ' + (isRealToday ? "i dag" : "denne dag") + ".</p>" +
+        (nextDay ? '<p style="text-align:center;margin-top:10px;"><button class="btn-text" id="goto-next-teaching-day">Gå til næste lektion (' + formatDate(nextDay) + ")</button></p>" : "");
       const gotoBtn = document.getElementById("goto-next-teaching-day");
       if (gotoBtn) gotoBtn.addEventListener("click", () => { state.todayViewIso = nextDay; renderToday(); });
       return;
     }
 
-    lessons.forEach((a, idx) => {
+    dayLessons.forEach((a, idx) => {
       const card = document.createElement("div");
       const colorKey = studentColorKey(idx);
       card.className = "lesson-card color-" + colorKey;
@@ -1567,10 +1354,9 @@
       const isDone = attendance && attendance.status === "done";
       card.innerHTML =
         '<div class="lesson-card-top"><span class="lesson-avatar color-' + colorKey + '">' + initials(a.student.name) + "</span>" +
-        '<span class="mono-time" style="width:auto;">' + a.start_time.slice(0, 5) + "</span>" +
-        '<span class="row-title"><span class="name">' + a.student.name + "</span>" +
-        '<span class="tag tag-instr">' + (a.instrument || "") + "</span>" +
-        (a.is_trial ? '<span class="tag tag-trial">Prøvelektion</span>' : "") + "</span>" +
+        '<span class="mono-time" style="width:auto;">' + a.start_time.slice(0, 5) + "–" + a.end_time.slice(0, 5) + "</span>" +
+        '<span class="row-title"><span class="name">' + escHtml(a.student.name) + "</span>" +
+        (a.location ? '<span class="tag tag-instr">' + escHtml(a.location) + "</span>" : "") + "</span>" +
         (isDone ? '<span class="tag tag-done">Fremmøde registreret</span>' : "") +
         '<button class="btn-text see-student-page">Se elevens side</button>' +
         '<button class="btn-text open-lesson">Åbn</button>' +
@@ -1637,7 +1423,7 @@
       (doneAlready
         ? '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">Fremmøde er allerede registreret. Du kan stadig sende en note og lægge video, filer eller akkordark op herunder.</p>' +
           '<button class="btn btn-primary btn-small register-attendance">Send note til eleven</button>'
-        : '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">' + (a.is_trial ? "Prøvelektion — tilføjes til fakturering separat." : "Tilføjes blandt lektioner der skal faktureres.") + "</p>" +
+        : '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">Tilføjes blandt lektioner der skal faktureres — ' + escHtml(priceLabel(a.student)) + ".</p>" +
           '<button class="btn btn-primary btn-small register-attendance">Registrér fremmøde &amp; send note</button>') +
       '<div style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--border);">' +
       '<label class="field" style="margin-top:0;"><span>Privat note (kun til dig — eleven ser aldrig denne)</span><textarea class="teacher-note" placeholder="Til dig selv — fx hvad eleven kæmper med, hvad I skal huske til næste gang, forældrekontakt osv."></textarea></label>' +
@@ -1709,7 +1495,8 @@
       toast("Privat note gemt — eleven ser den aldrig.");
     });
     detail.querySelector(".register-attendance").addEventListener("click", async () => {
-      const price = lessonPrices[a.instrument] || lessonPrices["Andet"] || 0;
+      // Hver elev har sin egen pris (students.lesson_price).
+      const price = a.student.lesson_price === null || a.student.lesson_price === undefined ? 0 : a.student.lesson_price;
       const noteText = (noteEl ? noteEl.value : "").trim();
       const prevAtt = attendanceForDate(a.student_id, lessonDateIso);
       if (prevAtt && prevAtt.status === "done") {
@@ -1723,7 +1510,7 @@
       }
 
       const { error: attErr } = await sb.from("attendance_log").upsert(
-        { student_id: a.student_id, recurring_assignment_id: a.id, lesson_date: lessonDateIso, status: "done", price_at_time: price },
+        { student_id: a.student_id, lesson_id: a.id, lesson_date: lessonDateIso, status: "done", price_at_time: price },
         { onConflict: "student_id,lesson_date" }
       );
       if (attErr) { toast("Kunne ikke registrere fremmøde: " + attErr.message); return; }
@@ -1799,30 +1586,20 @@
   function studentPageUrl(id) { return "/elev/?elev=" + encodeURIComponent(id); }
   function possessive(name) { return name + (/[sxz]$/i.test(name) ? "’" : "s"); }
   function firstName(name) { return String(name || "").split(" ")[0]; }
-  function assignmentFor(studentId) { return assignments.find((a) => a.student_id === studentId) || null; }
-  // Kommende lektionsdatoer (inkl. i dag), uden aflyste dage.
-  function upcomingLessonDates(a, count) {
-    const out = [];
-    if (!a) return out;
-    let iso = isoToday();
-    for (let i = 0; i < 120 && out.length < count; i++) {
-      if (weekdayIdxForIso(iso) === a.weekday && !isCancelled(iso)) out.push(iso);
-      iso = isoAddDays(iso, 1);
-    }
-    return out;
+  // Elevens kommende bookede lektioner (inkl. i dag).
+  function upcomingLessonsFor(studentId) {
+    const today = isoToday();
+    return lessons.filter((l) => l.student_id === studentId && l.status === "booked" && l.lesson_date >= today);
   }
   function studentRows() {
-    const rows = [];
-    const seen = new Set();
-    assignments
-      .slice()
-      .sort((x, y) => x.weekday - y.weekday || x.start_time.localeCompare(y.start_time))
-      .forEach((a) => { if (!seen.has(a.student_id)) { seen.add(a.student_id); rows.push({ student: a.student, a }); } });
-    students
-      .filter((st) => !seen.has(st.id))
-      .sort((x, y) => x.name.localeCompare(y.name, "da"))
-      .forEach((st) => rows.push({ student: st, a: null }));
-    return rows;
+    // Elever med en kommende lektion først (efter dato/tid), derefter resten alfabetisk.
+    const rows = students.map((st) => ({ student: st, next: nextLessonFor(st.id) }));
+    return rows.sort((x, y) => {
+      if (x.next && y.next) return (x.next.lesson_date + x.next.start_time).localeCompare(y.next.lesson_date + y.next.start_time);
+      if (x.next) return -1;
+      if (y.next) return 1;
+      return x.student.name.localeCompare(y.student.name, "da");
+    });
   }
   // Åbner fanen "Elever" direkte på en bestemt elev og en bestemt underfane.
   function showStudentPage(studentId, pane) {
@@ -1853,22 +1630,22 @@
     el.innerHTML = '<div class="panel">' + rows.map((r, idx) => {
       const st = r.student;
       const colorKey = studentColorKey(idx);
-      const next = upcomingLessonDates(r.a, 1)[0];
+      const next = r.next;
       const mediaCount = lessonMedia.filter((m) => m.student_id === st.id).length;
       const plan = (st.current_focus || "").trim();
       return (
         '<div class="lesson-card color-' + colorKey + '" data-id="' + st.id + '">' +
         '<div class="lesson-card-top"><span class="lesson-avatar color-' + colorKey + '">' + escHtml(initials(st.name)) + "</span>" +
         '<span class="row-title"><span class="name">' + escHtml(st.name) + "</span>" +
-        (r.a ? '<span class="tag tag-recurring">' + escHtml(slotLabel(r.a.weekday, r.a.start_time, r.a.end_time)) + "</span>" : '<span class="tag">Ingen fast tid</span>') +
+        '<span class="tag">' + escHtml(priceLabel(st)) + "</span>" +
         "</span></div>" +
         '<p class="stu-card-meta">' +
-        (next ? "<b>Næste lektion:</b> " + escHtml(formatDate(next)) + (next === isoToday() ? " (i dag)" : "") + " · " : "") +
+        "<b>Næste lektion:</b> " + (next ? escHtml(lessonWhenLabel(next)) + (next.lesson_date === isoToday() ? " (i dag)" : "") + (next.location ? ", " + escHtml(next.location.toLowerCase()) : "") : "ingen booket") + " · " +
         "<b>Plan:</b> " + (plan ? escHtml(plan.length > 90 ? plan.slice(0, 90) + "…" : plan) : "ingen endnu") +
         " · <b>Materiale:</b> " + mediaCount + "</p>" +
         '<div class="stu-card-actions">' +
         '<button type="button" class="btn btn-ghost btn-small" data-go="material">📎 Materiale</button>' +
-        '<button type="button" class="btn btn-ghost btn-small" data-go="plan">📝 Planlæg næste lektion</button>' +
+        '<button type="button" class="btn btn-ghost btn-small" data-go="plan">📝 Planlæg &amp; book</button>' +
         '<button type="button" class="btn btn-ghost btn-small" data-go="view">👀 Se som elev</button>' +
         "</div></div>"
       );
@@ -1884,20 +1661,21 @@
   }
   function renderStudentFocus(row) {
     const st = row.student;
-    const a = row.a;
-    const next = upcomingLessonDates(a, 1)[0];
+    const next = nextLessonFor(st.id);
     document.getElementById("stu-focus-name").textContent = st.name;
     document.getElementById("stu-focus-sub").textContent =
-      (a ? "Fast tid: " + slotLabel(a.weekday, a.start_time, a.end_time) + " hver uge" : "Ingen fast tid endnu") +
-      (next ? " · Næste lektion: " + formatDate(next) + (next === isoToday() ? " (i dag)" : "") : "");
+      next ? "Næste lektion: " + lessonWhenLabel(next) + (next.lesson_date === isoToday() ? " (i dag)" : "") + (next.location ? " · " + next.location : "") : "Ingen lektion booket";
+    const priceEl = document.getElementById("stu-focus-price");
+    priceEl.innerHTML = priceEditHtml(st);
+    wirePriceEdit(priceEl, st, () => renderStudentFocus({ student: st }));
     document.querySelectorAll(".stu-subtab").forEach((b) => {
       const on = b.dataset.pane === state.studentPane;
       b.classList.toggle("active", on);
       b.setAttribute("aria-selected", on);
     });
     ["material", "plan", "view"].forEach((p) => { document.getElementById("stu-pane-" + p).hidden = p !== state.studentPane; });
-    if (state.studentPane === "material") renderStudentMaterialPane(st, a);
-    if (state.studentPane === "plan") renderStudentPlanPane(st, a, next);
+    if (state.studentPane === "material") renderStudentMaterialPane(st);
+    if (state.studentPane === "plan") renderStudentPlanPane(st, next);
     if (state.studentPane === "view") {
       document.getElementById("student-page-newtab").href = studentPageUrl(st.id);
       // Genindlæses hver gang, så nyt materiale og nye noter altid er med.
@@ -1932,13 +1710,15 @@
     const { error: insErr } = await sb.from("lesson_media").insert({ student_id: studentId, lesson_date: dateIso, type: "file", title: fileName, storage_path: path });
     if (insErr) { await sb.storage.from("lesson-media").remove([path]); throw insErr; }
   }
-  function renderStudentMaterialPane(st, a) {
+  function renderStudentMaterialPane(st) {
     const pane = document.getElementById("stu-pane-material");
-    const dates = upcomingLessonDates(a, 6);
     const today = isoToday();
-    if (!dates.includes(today)) dates.unshift(today);
+    // Valgbare datoer: elevens seneste 3 lektioner, i dag og de kommende.
+    const past = lessons.filter((l) => l.student_id === st.id && l.status === "booked" && l.lesson_date < today).map((l) => l.lesson_date).slice(-3);
+    const lessonDates = new Set(lessons.filter((l) => l.student_id === st.id && l.status === "booked").map((l) => l.lesson_date));
+    const dates = Array.from(new Set([...past, today, ...upcomingLessonsFor(st.id).map((l) => l.lesson_date)])).sort();
     let chosen = state.studentMaterialDate[st.id];
-    if (!chosen || !dates.includes(chosen)) chosen = (a && upcomingLessonDates(a, 1)[0]) || today;
+    if (!chosen || !dates.includes(chosen)) { const n = nextLessonFor(st.id); chosen = n ? n.lesson_date : today; }
     state.studentMaterialDate[st.id] = chosen;
     const media = lessonMedia
       .filter((m) => m.student_id === st.id)
@@ -1946,7 +1726,7 @@
     pane.innerHTML =
       '<p class="stu-field-label" style="margin-top:0;">Til lektionen</p>' +
       '<select class="stu-select" id="stu-mat-date" aria-label="Vælg lektion">' +
-      dates.map((d) => '<option value="' + d + '"' + (d === chosen ? " selected" : "") + ">" + escHtml(formatDate(d)) + (d === today ? " (i dag)" : "") + (a && weekdayIdxForIso(d) === a.weekday ? "" : " — ikke en fast lektionsdag") + "</option>").join("") +
+      dates.map((d) => '<option value="' + d + '"' + (d === chosen ? " selected" : "") + ">" + escHtml(formatDate(d)) + (d === today ? " (i dag)" : "") + (lessonDates.has(d) ? " — lektion" : "") + "</option>").join("") +
       "</select>" +
       '<p class="stu-field-label">Læg op</p>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
@@ -1986,7 +1766,7 @@
       try {
         await uploadMaterial(st.id, dateSel.value, file, type);
         await refreshMedia();
-        renderStudentFocus({ student: st, a });
+        renderStudentFocus({ student: st });
         toast((type === "video" ? "Videoen" : "Filen") + " er lagt på " + escHtml(possessive(firstName(st.name))) + " side.");
       } catch (err) {
         toast("Upload fejlede: " + escHtml(err && err.message ? err.message : String(err)));
@@ -2002,7 +1782,7 @@
       try {
         await attachDocument(st.id, dateSel.value, doc);
         await refreshMedia();
-        renderStudentFocus({ student: st, a });
+        renderStudentFocus({ student: st });
         toast("“" + escHtml(doc.title) + "” er lagt på " + escHtml(possessive(firstName(st.name))) + " side.");
       } catch (err) {
         btn.disabled = false;
@@ -2023,7 +1803,7 @@
         if (error) { toast("Kunne ikke fjerne filen: " + escHtml(error.message)); return; }
         await sb.storage.from("lesson-media").remove([m.storage_path]);
         await refreshMedia();
-        renderStudentFocus({ student: st, a });
+        renderStudentFocus({ student: st });
         toast("Fjernet fra elevens side.");
       });
     });
@@ -2033,23 +1813,33 @@
   // Planen gemmes i students.current_focus — samme felt som "Note til i
   // dag — hvad skal I kigge på?" på elevens kort under "I dag", så den står
   // klar der på lektionsdagen. Den vises ikke på elevens side.
-  function renderStudentPlanPane(st, a, next) {
+  function renderStudentPlanPane(st, next) {
     const pane = document.getElementById("stu-pane-plan");
     const lastNote = lastNoteFor(st.id);
     const lastPriv = lastTeacherNoteFor(st.id);
+    const upcoming = upcomingLessonsFor(st.id);
     pane.innerHTML =
-      '<p style="font-size:14px;margin-bottom:6px;">' +
-      (next ? "Næste lektion: <b>" + escHtml(formatDate(next)) + (a ? " kl. " + escHtml(a.start_time.slice(0, 5)) : "") + "</b>" : "Eleven har ingen fast tid endnu.") +
-      "</p>" +
+      '<p class="stu-field-label" style="margin-top:0;">Bookede lektioner</p>' +
+      (upcoming.length
+        ? upcoming.map((l) => '<div class="lesson-row"><span class="mono-date">' + escHtml(formatDate(l.lesson_date)) + '</span><span class="mono-time" style="width:auto;">' + l.start_time.slice(0, 5) + "–" + l.end_time.slice(0, 5) + '</span><span class="row-title" style="font-size:13.5px;">' + escHtml(l.location || "") + "</span></div>").join("")
+        : '<p class="empty-state" style="padding:6px 0;">Ingen lektion booket endnu.</p>') +
+      '<button type="button" class="btn btn-ghost btn-small" id="stu-book-toggle" style="margin-top:10px;">+ Book lektion for ' + escHtml(firstName(st.name)) + "</button>" +
+      '<div id="stu-book-form" class="book-form" hidden></div>' +
+      '<p class="stu-field-label">Plan til næste lektion</p>' +
       (lastNote ? '<p class="lesson-lastnote"><span class="ll-label">Sidste note til eleven (' + escHtml(formatDate(lastNote.lesson_date)) + ")</span>" + escHtml(lastNote.summary) + "</p>" : "") +
-      (lastPriv ? '<p class="lesson-lastnote" style="opacity:0.85;"><span class="ll-label">Din sidste private note (' + escHtml(formatDate(lastPriv.lesson_date)) + ")</span>" + escHtml(lastPriv.note) + "</p>" : "") +
-      '<label class="field"><span>Plan til næste lektion — hvad skal I kigge på?</span>' +
+      (lastPriv ? '<p class="lesson-lastnote" style="opacity:0.85;margin-top:8px;"><span class="ll-label">Din sidste private note (' + escHtml(formatDate(lastPriv.lesson_date)) + ")</span>" + escHtml(lastPriv.note) + "</p>" : "") +
+      '<label class="field"><span>Hvad skal I kigge på næste gang?</span>' +
       '<textarea id="stu-plan-text" rows="5" placeholder="F.eks. C-dur og G7, venstre hånd i tempo 80, ny sang: …">' + escHtml(st.current_focus || "") + "</textarea></label>" +
       '<p style="font-size:12.5px;color:var(--ink-soft);margin:8px 0 12px;">Står klar på elevens kort under “I dag” på lektionsdagen. Eleven ser den ikke.</p>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
       '<button type="button" class="btn btn-primary btn-small" id="stu-plan-save">Gem plan</button>' +
       '<button type="button" class="btn btn-ghost btn-small" id="stu-plan-to-material">📎 Læg materiale op til lektionen</button>' +
       "</div>";
+    pane.querySelector("#stu-book-toggle").addEventListener("click", () => {
+      const f = pane.querySelector("#stu-book-form");
+      if (!f.hidden) { f.hidden = true; return; }
+      wireBookingForm(f, st.id, null);
+    });
     pane.querySelector("#stu-plan-save").addEventListener("click", async () => {
       const val = pane.querySelector("#stu-plan-text").value;
       const { error } = await sb.from("students").update({ current_focus: val }).eq("id", st.id);
@@ -2058,11 +1848,18 @@
       toast("Planen for " + escHtml(possessive(firstName(st.name))) + " næste lektion er gemt.");
     });
     pane.querySelector("#stu-plan-to-material").addEventListener("click", () => {
-      if (next) state.studentMaterialDate[st.id] = next;
+      if (next) state.studentMaterialDate[st.id] = next.lesson_date;
       state.studentPane = "material";
       renderStudentPages();
     });
   }
+
+  // "+ Ny elev" øverst i Elever-fanen.
+  document.getElementById("elever-new-toggle").addEventListener("click", () => {
+    const form = document.getElementById("elever-new-form");
+    if (!form.hidden) { form.hidden = true; return; }
+    wireNewStudentForm(form, {}, (newId) => { state.studentPageId = newId; state.studentPane = "plan"; renderStudentPages(); });
+  });
 
   // ═══════════════════════ AKKORDARK ═══════════════════════
   // Klaviaturer på 3 oktaver (C til C, 37 tangenter) hvor Olle markerer
