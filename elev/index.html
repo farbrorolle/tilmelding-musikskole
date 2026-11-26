@@ -136,6 +136,7 @@
   .tag-instr { background: var(--border-soft); color: var(--ink-soft); }
   .tag-done { background: var(--sage-wash); color: var(--sage); }
   .tag-pending { background: var(--accent-wash); color: var(--accent); }
+  .tag-cancelled { background: var(--rose-wash); color: var(--rose); }
   .tag-tobill { background: var(--accent-wash); color: var(--accent); }
   .tag-sent { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
   .empty-state { text-align: center; color: var(--ink-faint); font-size: 13.5px; font-style: italic; padding: 26px 10px; }
@@ -234,13 +235,13 @@
       <div class="tabs" role="tablist" aria-label="Skift elev" id="student-switcher" hidden style="margin-bottom:18px;"></div>
 
       <div id="portal-pending" class="panel" hidden>
-        <div class="section-label"><span>Du er skrevet op</span></div>
-        <p style="color:var(--ink-soft);font-size:14.5px;line-height:1.6;">Din bruger er oprettet, og dine ønsker er sendt videre til Olle. Så snart han har sat en fast ugentlig tid til dig, dukker den op her — ingen grund til at gøre andet lige nu.</p>
+        <div class="section-label"><span>Din side er på vej</span></div>
+        <p style="color:var(--ink-soft);font-size:14.5px;line-height:1.6;">Din bruger er oprettet. Så snart Olle har sat din side op, dukker dine lektioner og dit materiale op her.</p>
       </div>
 
       <div id="portal-main">
         <div class="fixed-time-hero">
-          <p class="label">Din faste tid</p>
+          <p class="label">Næste lektion</p>
           <p class="big" id="portal-fixed-time">—</p>
           <div class="next-lesson-note" id="portal-next-note"></div>
         </div>
@@ -259,7 +260,7 @@
         </div>
         <div class="panel">
           <div class="section-label"><span>Dine kommende lektioner</span></div>
-          <p class="section-sub">De næste ugers tider ud fra din faste plads.</p>
+          <p class="section-sub">De lektioner Olle har booket med dig.</p>
           <div class="row-list" id="portal-upcoming"></div>
         </div>
         <div class="panel">
@@ -436,8 +437,7 @@
           linkedStudents = [{ id: stu.id, name: stu.name }];
           state.selectedStudentId = stu.id;
           student = stu;
-          const { data: asg } = await sb.from("recurring_assignments").select("*").eq("student_id", stu.id).order("created_at", { ascending: false }).limit(1);
-          assignment = (asg && asg[0]) || null;
+          assignment = null; // ingen faste tider længere — lektionerne hentes i renderPortal()
           if (Object.keys(lessonPrices).length === 0) {
             const { data: prices } = await sb.from("lesson_prices").select("*");
             lessonPrices = Object.fromEntries((prices || []).map((p) => [p.instrument, p.price]));
@@ -467,12 +467,7 @@
 
     const { data: stu } = await sb.from("students").select("*").eq("id", state.selectedStudentId).maybeSingle();
     student = stu || null;
-    if (student) {
-      const { data: asg } = await sb.from("recurring_assignments").select("*").eq("student_id", student.id).order("created_at", { ascending: false }).limit(1);
-      assignment = (asg && asg[0]) || null;
-    } else {
-      assignment = null;
-    }
+    assignment = null; // ingen faste tider længere (2026-11-26) — lektionerne hentes i renderPortal()
     if (Object.keys(lessonPrices).length === 0) {
       const { data: prices } = await sb.from("lesson_prices").select("*");
       lessonPrices = Object.fromEntries((prices || []).map((p) => [p.instrument, p.price]));
@@ -777,7 +772,9 @@
     renderStudentSwitcher();
     document.getElementById("portal-heading").textContent = student ? student.name.split(" ")[0] + " — din side" : "Din side";
 
-    if (!assignment) {
+    // OBS (2026-11-26): ingen faste tider længere. Lektionerne bookes enkeltvis
+    // af Olle (tabellen `lessons`), så siden viser de bookede lektioner.
+    if (!student) {
       document.getElementById("portal-pending").hidden = false;
       document.getElementById("portal-main").hidden = true;
       return;
@@ -785,45 +782,54 @@
     document.getElementById("portal-pending").hidden = true;
     document.getElementById("portal-main").hidden = false;
 
-    document.getElementById("portal-fixed-time").textContent = WEEKDAYS_PLURAL[assignment.weekday] + " kl. " + assignment.start_time.slice(0, 5);
-    const firstUpcoming = nextOccurrenceDates(assignment.weekday, 1)[0];
-    document.getElementById("portal-next-note").innerHTML = "Næste gang er <b>" + formatDate(firstUpcoming) + "</b>.";
-
-    const [{ data: cancelled }, { data: notesRaw }, { data: mediaRaw }, { data: attendance }, { data: invoicesRaw }] = await Promise.all([
-      sb.from("cancelled_lesson_dates").select("lesson_date"),
+    const todayIso = toIsoLocal(new Date());
+    const [{ data: lessonsRaw }, { data: notesRaw }, { data: mediaRaw }, { data: attendance }, { data: invoicesRaw }] = await Promise.all([
+      sb.from("lessons").select("*").eq("student_id", student.id).order("lesson_date", { ascending: true }).order("start_time", { ascending: true }),
       sb.from("lesson_notes").select("*").eq("student_id", student.id).order("lesson_date", { ascending: false }),
       sb.from("lesson_media").select("*").eq("student_id", student.id).order("created_at", { ascending: false }),
       sb.from("attendance_log").select("*").eq("student_id", student.id),
       sb.from("invoices").select("*, invoice_lines(*)").eq("student_id", student.id).order("created_at", { ascending: false }),
     ]);
-    const cancelledSet = new Set((cancelled || []).map((c) => c.lesson_date));
+    const myLessons = lessonsRaw || [];
     const notes = notesRaw || [];
     const media = mediaRaw || [];
     const invoices = invoicesRaw || [];
+    const upcoming = myLessons.filter((l) => l.lesson_date >= todayIso);
+    const nextLesson = upcoming.find((l) => l.status === "booked") || null;
+    const timeLabel = (l) => l.start_time.slice(0, 5) + "–" + l.end_time.slice(0, 5);
+
+    // ── Næste lektion ──
+    if (nextLesson) {
+      document.getElementById("portal-fixed-time").textContent = formatDate(nextLesson.lesson_date) + " kl. " + nextLesson.start_time.slice(0, 5);
+      document.getElementById("portal-next-note").textContent = (nextLesson.location ? nextLesson.location + " · " : "") + timeLabel(nextLesson);
+    } else {
+      document.getElementById("portal-fixed-time").textContent = "Ingen lektion booket lige nu";
+      document.getElementById("portal-next-note").textContent = "Olle booker den næste tid med dig.";
+    }
 
     // ── Kommende lektioner ──
     const upcomingEl = document.getElementById("portal-upcoming");
     upcomingEl.innerHTML = "";
-    let firstShown = false;
-    nextOccurrenceDates(assignment.weekday, UPCOMING_WINDOW + 3)
-      .filter((iso) => !cancelledSet.has(iso))
-      .slice(0, UPCOMING_WINDOW)
-      .forEach((iso) => {
-        const row = document.createElement("div");
-        row.className = "divider-row";
-        row.innerHTML =
-          '<span class="mono-date">' + formatDate(iso) + "</span>" +
-          '<span class="mono-time" style="width:auto;">' + assignment.start_time.slice(0, 5) + "</span>" +
-          '<span class="row-title"><span class="name">' + (assignment.instrument || student.instrument_onske || "Lektion") + "</span></span>" +
-          (!firstShown ? '<span class="tag tag-pending">Næste</span>' : "");
-        firstShown = true;
-        upcomingEl.appendChild(row);
-      });
+    const shown = upcoming.slice(0, UPCOMING_WINDOW);
+    if (shown.length === 0) {
+      upcomingEl.innerHTML = '<p class="empty-state">Ingen kommende lektioner booket endnu.</p>';
+    }
+    shown.forEach((l) => {
+      const row = document.createElement("div");
+      row.className = "divider-row";
+      row.innerHTML =
+        '<span class="mono-date">' + formatDate(l.lesson_date) + "</span>" +
+        '<span class="mono-time" style="width:auto;">' + timeLabel(l) + "</span>" +
+        '<span class="row-title"><span class="name">' + (l.location || "Lektion") + "</span></span>" +
+        (l.status === "cancelled" ? '<span class="tag tag-cancelled">Aflyst</span>' : nextLesson && l.id === nextLesson.id ? '<span class="tag tag-pending">Næste</span>' : "");
+      upcomingEl.appendChild(row);
+    });
 
     // ── Gennemførte lektioner ──
     const completedEl = document.getElementById("portal-completed");
     completedEl.innerHTML = "";
-    const doneEntries = attendance.filter((a) => a.status === "done").sort((a, b) => b.lesson_date.localeCompare(a.lesson_date));
+    const doneEntries = (attendance || []).filter((a) => a.status === "done").sort((a, b) => b.lesson_date.localeCompare(a.lesson_date));
+    const lessonOf = (e) => myLessons.find((l) => (e.lesson_id && l.id === e.lesson_id) || (l.lesson_date === e.lesson_date)) || null;
     if (doneEntries.length === 0) {
       completedEl.innerHTML = '<p class="empty-state">Ingen gennemførte lektioner endnu.</p>';
     } else {
@@ -832,17 +838,18 @@
         row.className = "divider-row";
         row.innerHTML =
           '<span class="mono-date">' + formatDate(e.lesson_date) + "</span>" +
-          '<span class="mono-time" style="width:auto;">' + assignment.start_time.slice(0, 5) + "</span>" +
-          '<span class="row-title"><span class="name">' + (assignment.instrument || student.instrument_onske || "Lektion") + "</span></span>" +
+          '<span class="mono-time" style="width:auto;">' + (lessonOf(e) ? timeLabel(lessonOf(e)) : "") + "</span>" +
+          '<span class="row-title"><span class="name">' + ((lessonOf(e) && lessonOf(e).location) || "Lektion") + "</span></span>" +
           '<span class="tag tag-done">Gennemført</span>';
         completedEl.appendChild(row);
       });
     }
 
     // ── Fakturering — kort statuslinje ──
-    const price = lessonPrices[assignment.instrument] || lessonPrices["Andet"] || 0;
+    // Prisen gemmes pr. lektion ved fremmøde (price_at_time) — hver elev har sin egen pris.
     const unbilled = doneEntries.filter((e) => !e.invoice_id);
-    document.getElementById("portal-invoice-total").textContent = (unbilled.length * price).toLocaleString("da-DK") + " kr.";
+    const unbilledTotal = unbilled.reduce((sum, e) => sum + (Number(e.price_at_time) || 0), 0);
+    document.getElementById("portal-invoice-total").textContent = unbilledTotal.toLocaleString("da-DK") + " kr.";
     document.getElementById("portal-invoice-note").textContent =
       unbilled.length === 0 ? "Ingen ufakturerede lektioner endnu denne periode." : unbilled.length + " lektion" + (unbilled.length === 1 ? "" : "er") + " indtil videre denne periode.";
 
