@@ -352,7 +352,7 @@
            uden for #today-list, så det ikke nulstilles når dagen skiftes. -->
       <div class="panel" id="chord-panel">
         <div class="section-label"><span>Akkordark</span></div>
-        <p class="section-sub" style="margin-bottom:12px;">Klik (eller tryk) på tangenterne for at markere tonerne, og skriv akkordens navn under hvert klaver. Udskriv eller gem som PDF i A4 — 5 klaverer pr. side.</p>
+        <p class="section-sub" style="margin-bottom:12px;">Klik (eller tryk) på tangenterne for at markere tonerne, og skriv akkordens navn under hvert klaver. Gem arket som dokument her på siden, og læg det derefter i en elevs materiale fra elevens kort ovenfor — eller udskriv det i A4. 5 klaverer pr. side.</p>
         <button class="btn btn-ghost btn-small" id="chord-toggle">Åbn akkordark</button>
         <div id="chord-editor" hidden>
           <div class="chord-paper">
@@ -361,9 +361,14 @@
           </div>
           <div class="chord-actions" style="margin-top:14px;">
             <button class="btn btn-ghost btn-small" id="chord-add">+ Tilføj klaver</button>
-            <button class="btn btn-primary btn-small" id="chord-print">Udskriv / gem som PDF</button>
+            <button class="btn btn-primary btn-small" id="chord-save-doc">Gem som dokument</button>
+            <button class="btn btn-ghost btn-small" id="chord-print">Udskriv</button>
             <button class="btn-text danger" id="chord-new" style="margin-left:auto;">Nyt ark</button>
           </div>
+        </div>
+        <div style="margin-top:20px;padding-top:14px;border-top:1px dashed var(--border);">
+          <div class="section-label" style="margin-bottom:8px;"><span>Gemte dokumenter</span><span class="count-chip" id="teacher-docs-count">0</span></div>
+          <div id="teacher-docs-list"></div>
         </div>
       </div>
     </div>
@@ -640,6 +645,7 @@
   let lessonPrices = {};
   let elevProfiles = [];    // profiles med role='elev' (student_id, invited_at) — bruges til kontostatus
   let teacherNotes = [];    // teacher_notes — private noter, læreren ser dem, eleven kan aldrig se dem (egen tabel/RLS)
+  let teacherDocuments = []; // teacher_documents — lærerens gemte dokumenter (fx akkordark som PDF), kun synlige for læreren
 
   const state = {
     draftAssignments: [],
@@ -652,7 +658,7 @@
   function studentById(id) { return students.find((s) => s.id === id); }
 
   async function loadAllData() {
-    const [{ data: wl }, { data: stu }, { data: asg }, { data: att }, { data: notes }, { data: tnotes }, { data: media }, { data: cancelled }, { data: extra }, { data: prices }, { data: eprof }] = await Promise.all([
+    const [{ data: wl }, { data: stu }, { data: asg }, { data: att }, { data: notes }, { data: tnotes }, { data: media }, { data: cancelled }, { data: extra }, { data: prices }, { data: eprof }, { data: tdocs }] = await Promise.all([
       sb.from("waitlist_signups").select("*").eq("status", "pending").order("created_at", { ascending: true }),
       sb.from("students").select("*"),
       sb.from("recurring_assignments").select("*").eq("status", "published"),
@@ -668,8 +674,10 @@
       // profiles.student_id kun den "primære" elev for kontoen, og ville
       // vise "ingen konto" for en elev der reelt deler login med en søskende.
       sb.from("account_students").select("student_id, profiles(invited_at)"),
+      sb.from("teacher_documents").select("id, title, storage_path, sheet, created_at").order("created_at", { ascending: false }),
     ]);
     waitlist = wl || [];
+    teacherDocuments = tdocs || [];
     students = stu || [];
     assignments = (asg || []).map((a) => ({ ...a, student: studentById(a.student_id) })).filter((a) => a.student);
     attendanceLog = att || [];
@@ -710,6 +718,10 @@
   async function refreshTeacherNotes() {
     const { data: tnotes } = await sb.from("teacher_notes").select("*");
     teacherNotes = tnotes || [];
+  }
+  async function refreshTeacherDocuments() {
+    const { data } = await sb.from("teacher_documents").select("id, title, storage_path, sheet, created_at").order("created_at", { ascending: false });
+    teacherDocuments = data || [];
   }
   async function refreshMedia() {
     const { data: media } = await sb.from("lesson_media").select("*");
@@ -1474,6 +1486,7 @@
   }
 
   function renderToday() {
+    renderTeacherDocs();
     const el = document.getElementById("today-list");
     const viewIso = state.todayViewIso || isoToday();
     const lessons = lessonsForDate(viewIso);
@@ -1586,6 +1599,17 @@
       '<input type="file" accept="video/*" class="file-input-video" hidden>' +
       '<input type="file" class="file-input-file" hidden>' +
       "</div>" +
+      // Gemte dokumenter (fx akkordark) kan lægges direkte i elevens
+      // materiale for den viste dag. Listen opdateres af refreshDocSelects(),
+      // når et nyt dokument gemmes, uden at kortet tegnes om (så en halvskrevet
+      // note ikke forsvinder).
+      '<div class="doc-attach" style="margin-top:12px;">' +
+      '<div class="doc-attach-has"' + (teacherDocuments.length ? "" : " hidden") + '><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+      '<select class="doc-select" aria-label="Vælg gemt dokument" style="flex:1;min-width:180px;font-family:inherit;font-size:13.5px;color:var(--ink);background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 10px;">' + docOptionsHtml() + "</select>" +
+      '<button type="button" class="btn btn-ghost btn-small attach-doc">Læg i elevens materiale</button>' +
+      "</div></div>" +
+      '<p class="doc-attach-empty empty-state" style="padding:4px 0;font-size:12.5px;"' + (teacherDocuments.length ? " hidden" : "") + '>Ingen gemte dokumenter endnu — lav et akkordark nederst på siden og tryk “Gem som dokument”.</p>' +
+      "</div>" +
       '<div style="margin-top:16px;"><div class="section-label" style="margin-bottom:8px;"><span>Videoer</span></div>' + videoHtml + "</div>" +
       '<div style="margin-top:14px;"><div class="section-label" style="margin-bottom:8px;"><span>Filer</span></div>' + filesHtml + "</div>" +
       '<div style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--border);">' +
@@ -1657,6 +1681,36 @@
       wireLessonDetail(detail, a, viewIso);
       toast((type === "video" ? "Video" : "Fil") + " tilføjet — læg gerne flere op, én ad gangen.");
     }
+    detail.querySelector(".attach-doc").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      const doc = teacherDocuments.find((d) => d.id === detail.querySelector(".doc-select").value);
+      if (!doc) { toast("Vælg et dokument først."); return; }
+      btn.disabled = true;
+      try {
+        // Filen kopieres til elevens egen mappe — elever kan kun læse deres
+        // egen mappe, ikke lærerens dokumentmappe.
+        const { data: blob, error: dlErr } = await sb.storage.from("lesson-media").download(doc.storage_path);
+        if (dlErr) throw dlErr;
+        const fileName = (doc.title || "Dokument") + ".pdf";
+        const path = a.student_id + "/" + crypto.randomUUID() + "-" + safeFileName(fileName);
+        const { error: upErr } = await sb.storage.from("lesson-media").upload(path, blob, { contentType: "application/pdf" });
+        if (upErr) throw upErr;
+        const { error: insErr } = await sb.from("lesson_media").insert({ student_id: a.student_id, lesson_date: lessonDateIso, type: "file", title: fileName, storage_path: path });
+        if (insErr) throw insErr;
+        await refreshMedia();
+        // Bevar halvskrevne noter, når kortet tegnes om.
+        const keepStudent = noteEl ? noteEl.value : "";
+        const keepTeacher = teacherNoteEl ? teacherNoteEl.value : "";
+        detail.innerHTML = buildLessonDetailHtml(a);
+        wireLessonDetail(detail, a, viewIso);
+        const sn = detail.querySelector(".student-note"); if (sn) sn.value = keepStudent;
+        const tn = detail.querySelector(".teacher-note"); if (tn) tn.value = keepTeacher;
+        toast("“" + escHtml(doc.title) + "” er lagt i " + escHtml(a.student.name.split(" ")[0]) + "s materiale for " + formatDate(lessonDateIso).replace(/\.$/, "") + ".");
+      } catch (err) {
+        btn.disabled = false;
+        toast("Kunne ikke tilføje dokumentet: " + escHtml(err && err.message ? err.message : String(err)));
+      }
+    });
     const videoInput = detail.querySelector(".file-input-video");
     const fileInput = detail.querySelector(".file-input-file");
     detail.querySelector(".add-video").addEventListener("click", () => videoInput.click());
@@ -1856,6 +1910,207 @@
     };
     window.addEventListener("afterprint", done);
     setTimeout(() => window.print(), 50);
+  });
+
+  // ═══════════════════════ GEMTE DOKUMENTER (akkordark som PDF) ═══════════════════════
+  // "Gem som dokument" laver en PDF af akkordarket (A4, 5 klaverer pr. side),
+  // lægger den i storage under laerer-dokumenter/ (som ingen elev kan læse) og
+  // gemmer en række i teacher_documents — inkl. selve arket som JSON, så det
+  // kan åbnes og redigeres igen. Fra hver elevs kort i "I dag" kan dokumentet
+  // så lægges i elevens materiale for den viste dag.
+  const JSPDF_URL = "https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js";
+  const JSPDF_SRI = "sha384-qovJwSBbRDPP5cEjCp8S0UP66wrvnjaa60XMOGzTNanrThcrGfXfnZkvgY8N1KT3";
+  let jsPdfLoading = null;
+  function loadJsPdf() {
+    if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+    if (!jsPdfLoading) {
+      jsPdfLoading = new Promise((resolve, reject) => {
+        const sc = document.createElement("script");
+        sc.src = JSPDF_URL;
+        sc.integrity = JSPDF_SRI;
+        sc.crossOrigin = "anonymous";
+        sc.onload = () => (window.jspdf && window.jspdf.jsPDF ? resolve(window.jspdf.jsPDF) : reject(new Error("PDF-værktøjet kunne ikke indlæses.")));
+        sc.onerror = () => { jsPdfLoading = null; reject(new Error("PDF-værktøjet kunne ikke indlæses. Tjek internetforbindelsen.")); };
+        document.head.appendChild(sc);
+      });
+    }
+    return jsPdfLoading;
+  }
+  function svgToImage(svg) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Klaviaturen kunne ikke tegnes."));
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    });
+  }
+  function safeFileName(name) {
+    const out = String(name || "")
+      .replace(/æ/g, "ae").replace(/Æ/g, "Ae").replace(/ø/g, "oe").replace(/Ø/g, "Oe").replace(/å/g, "aa").replace(/Å/g, "Aa")
+      .normalize("NFKD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^A-Za-z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")
+      .slice(0, 80);
+    return out || "dokument";
+  }
+  function chordSheetIsEmpty() {
+    return !chordSheet.title.trim() && chordSheet.pianos.every((p) => !p.notes.length && !p.name.trim());
+  }
+  // Tegner hver A4-side på et lærred (200 dpi) og samler dem i en PDF. Hele
+  // siden bliver et billede, så æ/ø/å og ♯/♭ i titler og akkordnavne altid
+  // kommer rigtigt med.
+  async function buildChordPdfBlob() {
+    const JsPDF = await loadJsPdf();
+    try { await document.fonts.ready; } catch (e) { /* ignorer */ }
+    const DPI = 200;
+    const mm = (v) => Math.round((v / 25.4) * DPI);
+    const W = mm(210), H = mm(297), M = mm(10), CW = W - 2 * M;
+    const kbW = 22 * CHORD_WW + 2, kbH = CHORD_H + 2; // samme viewBox som keyboardSvg()
+    const pdf = new JsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true });
+    const title = chordSheet.title.trim();
+    if (title) pdf.setProperties({ title });
+    const pages = [];
+    for (let i = 0; i < chordSheet.pianos.length; i += CHORD_PER_PAGE) pages.push(chordSheet.pianos.slice(i, i + CHORD_PER_PAGE));
+    for (let pi = 0; pi < pages.length; pi++) {
+      const c = document.createElement("canvas");
+      c.width = W; c.height = H;
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#1F2E28"; ctx.strokeStyle = "#C9C0AE"; ctx.textBaseline = "top";
+      let y = M;
+      if (pi === 0 && title) {
+        ctx.textAlign = "left";
+        ctx.font = "500 " + mm(7) + 'px Spectral, Georgia, serif';
+        ctx.fillText(title, M, y, CW);
+        y += mm(7) + mm(6);
+      }
+      for (const p of pages[pi]) {
+        const img = await svgToImage(keyboardSvg(p.notes));
+        const h = Math.round((CW * kbH) / kbW);
+        ctx.drawImage(img, M, y, CW, h);
+        y += h + mm(1.5);
+        const name = p.name.trim();
+        if (name) {
+          ctx.textAlign = "center";
+          ctx.font = mm(5.3) + 'px Spectral, Georgia, serif';
+          ctx.fillText(name, W / 2, y, CW);
+        } else {
+          ctx.lineWidth = Math.max(1, mm(0.3));
+          ctx.beginPath(); ctx.moveTo(W / 2 - CW * 0.225, y + mm(7)); ctx.lineTo(W / 2 + CW * 0.225, y + mm(7)); ctx.stroke();
+        }
+        y += mm(8) + mm(5);
+      }
+      if (pi > 0) pdf.addPage("a4", "portrait");
+      pdf.addImage(c.toDataURL("image/jpeg", 0.9), "JPEG", 0, 0, 210, 297);
+    }
+    return pdf.output("blob");
+  }
+
+  function docDateLabel(iso) {
+    try { return new Date(iso).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }); } catch (e) { return ""; }
+  }
+  function docOptionsHtml() {
+    return teacherDocuments.map((d) => '<option value="' + d.id + '">' + escHtml(d.title) + " · " + escHtml(docDateLabel(d.created_at)) + "</option>").join("");
+  }
+  // Opdaterer dokument-vælgerne på elevkortene uden at tegne kortene om.
+  function refreshDocSelects() {
+    document.querySelectorAll(".doc-attach").forEach((el) => {
+      const has = teacherDocuments.length > 0;
+      el.querySelector(".doc-attach-has").hidden = !has;
+      el.querySelector(".doc-attach-empty").hidden = has;
+      const sel = el.querySelector(".doc-select");
+      const prev = sel.value;
+      sel.innerHTML = docOptionsHtml();
+      if (prev && teacherDocuments.some((d) => d.id === prev)) sel.value = prev;
+    });
+  }
+  function renderTeacherDocs() {
+    const list = document.getElementById("teacher-docs-list");
+    if (!list) return;
+    document.getElementById("teacher-docs-count").textContent = teacherDocuments.length;
+    if (!teacherDocuments.length) {
+      list.innerHTML = '<p class="empty-state" style="padding:6px 0;">Ingen gemte dokumenter endnu.</p>';
+      return;
+    }
+    list.innerHTML = teacherDocuments
+      .map((d) =>
+        '<div class="divider-row" data-doc-id="' + d.id + '" style="padding:9px 0;flex-wrap:wrap;">' +
+        '<span class="row-title" style="font-size:13.5px;">📄 ' + escHtml(d.title) + ' <span class="mono-date" style="width:auto;margin-left:6px;">' + escHtml(docDateLabel(d.created_at)) + "</span></span>" +
+        '<span style="display:flex;gap:10px;margin-left:auto;">' +
+        '<button type="button" class="btn-text doc-open">Åbn</button>' +
+        (d.sheet ? '<button type="button" class="btn-text doc-edit">Redigér</button>' : "") +
+        '<button type="button" class="btn-text danger doc-delete">Slet</button>' +
+        "</span></div>"
+      )
+      .join("");
+  }
+
+  document.getElementById("chord-save-doc").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    if (chordSheetIsEmpty()) { toast("Arket er tomt — markér nogle toner eller skriv et akkordnavn først."); return; }
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = "Gemmer…";
+    try {
+      const title = chordSheet.title.trim() || "Akkordark " + new Date().toLocaleDateString("da-DK");
+      const blob = await buildChordPdfBlob();
+      const path = "laerer-dokumenter/" + crypto.randomUUID() + "-" + safeFileName(title) + ".pdf";
+      const { error: upErr } = await sb.storage.from("lesson-media").upload(path, blob, { contentType: "application/pdf" });
+      if (upErr) throw upErr;
+      const sheet = { title: chordSheet.title, pianos: chordSheet.pianos.map((p) => ({ name: p.name, notes: p.notes.slice() })) };
+      const { error: insErr } = await sb.from("teacher_documents").insert({ title, storage_path: path, sheet });
+      if (insErr) {
+        await sb.storage.from("lesson-media").remove([path]);
+        throw insErr;
+      }
+      await refreshTeacherDocuments();
+      renderTeacherDocs();
+      refreshDocSelects();
+      toast("“" + escHtml(title) + "” er gemt. Læg det i en elevs materiale fra elevens kort ovenfor.");
+    } catch (err) {
+      toast("Kunne ikke gemme dokumentet: " + escHtml(err && err.message ? err.message : String(err)));
+    } finally {
+      btn.disabled = false; btn.textContent = orig;
+    }
+  });
+
+  document.getElementById("teacher-docs-list").addEventListener("click", async (e) => {
+    const row = e.target.closest("[data-doc-id]");
+    if (!row) return;
+    const doc = teacherDocuments.find((d) => d.id === row.dataset.docId);
+    if (!doc) return;
+    if (e.target.closest(".doc-open")) {
+      // Åbn fanen med det samme (ellers blokerer browseren den), og send
+      // den derefter videre til et tidsbegrænset link til PDF'en.
+      const w = window.open("", "_blank");
+      const { data, error } = await sb.storage.from("lesson-media").createSignedUrl(doc.storage_path, 600);
+      if (error || !data) { if (w) w.close(); toast("Kunne ikke åbne dokumentet."); return; }
+      if (w) w.location.href = data.signedUrl; else location.href = data.signedUrl;
+      return;
+    }
+    if (e.target.closest(".doc-edit")) {
+      if (!doc.sheet) return;
+      if (!chordSheetIsEmpty() && !confirm("Det akkordark du er i gang med, bliver erstattet af “" + doc.title + "”. Fortsæt?")) return;
+      chordSheet.title = doc.sheet.title || "";
+      chordSheet.pianos = (doc.sheet.pianos || []).map((p) => ({ id: newChordPiano().id, name: p.name || "", notes: Array.isArray(p.notes) ? p.notes.slice() : [] }));
+      if (!chordSheet.pianos.length) chordSheet.pianos.push(newChordPiano());
+      saveChordSheet();
+      const ed = document.getElementById("chord-editor");
+      ed.hidden = false;
+      document.getElementById("chord-toggle").textContent = "Luk akkordark";
+      renderChordEditor();
+      ed.scrollIntoView({ behavior: "smooth", block: "start" });
+      toast("Arket er åbnet. Tryk “Gem som dokument” for at gemme det som en ny version.");
+      return;
+    }
+    if (e.target.closest(".doc-delete")) {
+      if (!confirm("Slet “" + doc.title + "” fra dine gemte dokumenter? Elever, der allerede har fået det, beholder deres egen kopi.")) return;
+      const { error } = await sb.from("teacher_documents").delete().eq("id", doc.id);
+      if (error) { toast("Kunne ikke slette dokumentet: " + escHtml(error.message)); return; }
+      await sb.storage.from("lesson-media").remove([doc.storage_path]);
+      await refreshTeacherDocuments();
+      renderTeacherDocs();
+      refreshDocSelects();
+      toast("Dokumentet er slettet.");
+    }
   });
 
   // ───────────────────────── Init ─────────────────────────
