@@ -767,6 +767,9 @@
     // med /laerer, så et log ud her ville også logge Olle ud af lærersiden.
     document.getElementById("teacher-preview-banner").hidden = !state.teacherPreview;
     document.getElementById("portal-logout").hidden = state.teacherPreview;
+    // Vist inde i lærerens fane "Elevsider" (iframe): ingen "Luk"-knap, den
+    // giver kun mening når siden er åbnet i sin egen fane.
+    document.getElementById("teacher-preview-close").hidden = window.self !== window.top;
     if (state.teacherPreview && student) {
       document.getElementById("teacher-preview-name").textContent = student.name.split(" ")[0] + "s";
       document.title = "Forhåndsvisning: " + student.name + " — Olles lille musikskole";
