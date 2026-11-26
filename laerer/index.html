@@ -254,6 +254,37 @@
 
   footer.site { border-top: 1px solid var(--border-soft); padding: 22px 0 40px; text-align: center; color: var(--ink-faint); font-size: 12.5px; }
 
+  /* ───────────────────────── Akkordark ─────────────────────────
+     Arket vises som et hvidt "papir" uanset lyst/mørkt tema, så det ser ud
+     som det bliver udskrevet. */
+  #chord-panel { margin-top: 24px; }
+  .chord-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chord-paper { background: #FFFFFF; color: #1F2E28; border: 1px solid var(--border); border-radius: 12px; padding: 22px clamp(12px, 3vw, 28px); margin-top: 16px; box-shadow: 0 6px 18px hsl(var(--shadow) / 0.08); }
+  .chord-title-input { width: 100%; border: none; border-bottom: 1px dashed #C9C0AE; background: transparent; color: #1F2E28; font-family: "Spectral", Georgia, serif; font-size: 22px; padding: 4px 2px; margin-bottom: 18px; }
+  .chord-title-input::placeholder, .chord-name::placeholder { color: #A7AFA9; }
+  .chord-item + .chord-item { margin-top: 22px; }
+  .kb-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .kb-scroll svg { display: block; width: 100%; min-width: 560px; height: auto; touch-action: manipulation; cursor: pointer; user-select: none; -webkit-user-select: none; }
+  .chord-item-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .chord-name { flex: 1; min-width: 0; border: none; border-bottom: 1px dashed #C9C0AE; background: transparent; color: #1F2E28; font-family: "Spectral", Georgia, serif; font-size: 18px; text-align: center; padding: 4px 2px; }
+  .chord-item-row .btn-text { color: #8A5B22; }
+  .chord-item-row .btn-text.danger { color: #B4587A; }
+  .chord-page-break { margin: 22px 0 0; border-top: 1px dashed #C9C0AE; padding-top: 6px; font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: #93A199; text-align: center; }
+  #chord-print-root { display: none; }
+  @media print {
+    @page { size: A4 portrait; margin: 10mm; }
+    body.printing-chords { background: #FFFFFF; }
+    body.printing-chords > *:not(#chord-print-root) { display: none !important; }
+    body.printing-chords #chord-print-root { display: block; color: #1F2E28; font-family: "Karla", Arial, sans-serif; }
+    #chord-print-root .cp-page { break-after: page; page-break-after: always; }
+    #chord-print-root .cp-page:last-child { break-after: auto; page-break-after: auto; }
+    #chord-print-root h1 { font-family: "Spectral", Georgia, serif; font-size: 20pt; font-weight: 500; margin: 0 0 6mm; }
+    #chord-print-root .cp-item { break-inside: avoid; page-break-inside: avoid; margin-bottom: 5mm; }
+    #chord-print-root svg { display: block; width: 100%; height: auto; }
+    #chord-print-root .cp-name { font-family: "Spectral", Georgia, serif; font-size: 15pt; text-align: center; min-height: 8mm; margin-top: 1.5mm; }
+    #chord-print-root .cp-name.empty { border-bottom: 0.3mm solid #C9C0AE; width: 45%; margin-left: auto; margin-right: auto; }
+  }
+
   @media (max-width: 640px) {
     .assign-form { flex-direction: column; align-items: stretch; }
     .mono-date { width: 64px; }
@@ -315,6 +346,26 @@
         </div>
       </div>
       <div id="today-list"></div>
+
+      <!-- Akkordark: klaviaturer på 3 oktaver hvor Olle markerer tonerne og
+           skriver akkordnavnet under — udskrives/gemmes som PDF i A4. Ligger
+           uden for #today-list, så det ikke nulstilles når dagen skiftes. -->
+      <div class="panel" id="chord-panel">
+        <div class="section-label"><span>Akkordark</span></div>
+        <p class="section-sub" style="margin-bottom:12px;">Klik (eller tryk) på tangenterne for at markere tonerne, og skriv akkordens navn under hvert klaver. Udskriv eller gem som PDF i A4 — 5 klaverer pr. side.</p>
+        <button class="btn btn-ghost btn-small" id="chord-toggle">Åbn akkordark</button>
+        <div id="chord-editor" hidden>
+          <div class="chord-paper">
+            <input class="chord-title-input" id="chord-title" placeholder="Titel (valgfri)" maxlength="120">
+            <div id="chord-list"></div>
+          </div>
+          <div class="chord-actions" style="margin-top:14px;">
+            <button class="btn btn-ghost btn-small" id="chord-add">+ Tilføj klaver</button>
+            <button class="btn btn-primary btn-small" id="chord-print">Udskriv / gem som PDF</button>
+            <button class="btn-text danger" id="chord-new" style="margin-left:auto;">Nyt ark</button>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -386,6 +437,7 @@
 
 <footer class="site">Lærerens værktøjer · Olles lille musikskole — rigtig database, rigtig login.<br><span style="display:inline-block;margin-top:6px;">Google Kalender-invitationer og e-conomic-fakturering kobles på i et senere trin.</span></footer>
 <div id="toast-stack"></div>
+<div id="chord-print-root" aria-hidden="true"></div>
 
 <script type="module">
   import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -1612,6 +1664,199 @@
     videoInput.addEventListener("change", () => uploadMedia(videoInput.files[0], "video"));
     fileInput.addEventListener("change", () => uploadMedia(fileInput.files[0], "file"));
   }
+
+  // ═══════════════════════ AKKORDARK ═══════════════════════
+  // Klaviaturer på 3 oktaver (C til C, 37 tangenter) hvor Olle markerer
+  // tonerne i et akkord og skriver navnet under. Gemmes kun i denne browser
+  // (localStorage), så et halvfærdigt ark ikke forsvinder ved genindlæsning.
+  // Udskrives via et separat, rent print-område (#chord-print-root), 5
+  // klaverer pr. A4-side.
+  const CHORD_KEYS = 37;
+  const CHORD_WW = 24, CHORD_H = 100, CHORD_BW = 14, CHORD_BH = 62;
+  const CHORD_PER_PAGE = 5;
+  const NOTE_SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const NOTE_FLAT = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+  const IS_BLACK = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0];
+  const CHORD_STORE_KEY = "olle-akkordark-v1";
+
+  function escHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function newChordPiano() { return { id: Math.random().toString(36).slice(2, 10), name: "", notes: [] }; }
+  function loadChordSheet() {
+    try {
+      const raw = localStorage.getItem(CHORD_STORE_KEY);
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s && Array.isArray(s.pianos) && s.pianos.length) {
+          return {
+            title: typeof s.title === "string" ? s.title : "",
+            pianos: s.pianos.map((p) => ({
+              id: p.id || newChordPiano().id,
+              name: typeof p.name === "string" ? p.name : "",
+              notes: Array.isArray(p.notes) ? p.notes.filter((n) => Number.isInteger(n) && n >= 0 && n < CHORD_KEYS) : [],
+            })),
+          };
+        }
+      }
+    } catch (e) { /* localStorage utilgængelig — start blot forfra */ }
+    return { title: "", pianos: [newChordPiano(), newChordPiano(), newChordPiano()] };
+  }
+  const chordSheet = loadChordSheet();
+  function saveChordSheet() {
+    try { localStorage.setItem(CHORD_STORE_KEY, JSON.stringify(chordSheet)); } catch (e) { /* ignorer */ }
+  }
+
+  // Tegner én klaviatur som SVG. Faste farver (ikke tema-variabler), så den
+  // ser ens ud på skærm og papir — markerede tangenter får både farve og en
+  // prik, så det også kan læses på en sort/hvid-printer.
+  function keyboardSvg(notes) {
+    const marked = new Set(notes);
+    const keys = [];
+    let wi = 0;
+    for (let k = 0; k < CHORD_KEYS; k++) {
+      const pc = k % 12;
+      if (IS_BLACK[pc]) keys.push({ k, pc, black: true, x: wi * CHORD_WW - CHORD_BW / 2 });
+      else { keys.push({ k, pc, black: false, x: wi * CHORD_WW }); wi++; }
+    }
+    const width = wi * CHORD_WW;
+    const font = 'font-family="Karla, Arial, sans-serif"';
+    let whites = "", blacks = "";
+    keys.forEach((key) => {
+      const on = marked.has(key.k);
+      if (!key.black) {
+        const cx = key.x + CHORD_WW / 2;
+        whites +=
+          '<g data-k="' + key.k + '">' +
+          '<rect x="' + key.x + '" y="0" width="' + CHORD_WW + '" height="' + CHORD_H + '" fill="' + (on ? "#F0C35C" : "#FFFFFF") + '" stroke="#1F2E28" stroke-width="1"/>' +
+          (on ? '<circle cx="' + cx + '" cy="' + (CHORD_H - 27) + '" r="5" fill="#1F2E28"/>' : "") +
+          '<text x="' + cx + '" y="' + (CHORD_H - 8) + '" text-anchor="middle" font-size="10" ' + font + ' font-weight="' + (on ? 700 : 500) + '" fill="#1F2E28">' + NOTE_SHARP[key.pc] + "</text>" +
+          "</g>";
+      } else {
+        const cx = key.x + CHORD_BW / 2;
+        const txt = on ? "#1F2E28" : "#FFFFFF";
+        blacks +=
+          '<g data-k="' + key.k + '">' +
+          '<rect x="' + key.x + '" y="0" width="' + CHORD_BW + '" height="' + CHORD_BH + '" rx="1.5" fill="' + (on ? "#E0A93A" : "#1F2E28") + '" stroke="#1F2E28" stroke-width="1"/>' +
+          (on ? '<circle cx="' + cx + '" cy="' + (CHORD_BH - 30) + '" r="4" fill="#1F2E28"/>' : "") +
+          '<text x="' + cx + '" y="' + (CHORD_BH - 15) + '" text-anchor="middle" font-size="6.2" ' + font + ' font-weight="' + (on ? 700 : 500) + '" fill="' + txt + '">' + NOTE_SHARP[key.pc] + "</text>" +
+          '<text x="' + cx + '" y="' + (CHORD_BH - 6) + '" text-anchor="middle" font-size="6.2" ' + font + ' font-weight="' + (on ? 700 : 500) + '" fill="' + txt + '">' + NOTE_FLAT[key.pc] + "</text>" +
+          "</g>";
+      }
+    });
+    return (
+      '<svg viewBox="-1 -1 ' + (width + 2) + " " + (CHORD_H + 2) + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Klaviatur, 3 oktaver">' +
+      whites + blacks +
+      '<rect x="0" y="0" width="' + width + '" height="' + CHORD_H + '" fill="none" stroke="#1F2E28" stroke-width="1.5"/>' +
+      "</svg>"
+    );
+  }
+
+  function renderChordEditor() {
+    document.getElementById("chord-title").value = chordSheet.title;
+    const list = document.getElementById("chord-list");
+    list.innerHTML = chordSheet.pianos
+      .map((p, i) =>
+        (i > 0 && i % CHORD_PER_PAGE === 0 ? '<div class="chord-page-break">Side ' + (i / CHORD_PER_PAGE + 1) + "</div>" : "") +
+        '<div class="chord-item" data-id="' + p.id + '">' +
+        '<div class="kb-scroll">' + keyboardSvg(p.notes) + "</div>" +
+        '<div class="chord-item-row">' +
+        '<input class="chord-name" maxlength="60" placeholder="Akkordnavn, fx Am" value="' + escHtml(p.name) + '">' +
+        '<button type="button" class="btn-text chord-clear">Ryd</button>' +
+        '<button type="button" class="btn-text danger chord-remove">Fjern</button>' +
+        "</div></div>"
+      )
+      .join("");
+  }
+  function chordPianoFor(el) {
+    const item = el.closest(".chord-item");
+    return item ? chordSheet.pianos.find((p) => p.id === item.dataset.id) : null;
+  }
+
+  // Én lytter for hele listen (event delegation), så det virker uanset hvor
+  // mange klaverer der tilføjes. "click" dækker både mus og fingertryk.
+  document.getElementById("chord-list").addEventListener("click", (e) => {
+    const piano = chordPianoFor(e.target);
+    if (!piano) return;
+    const keyEl = e.target.closest("[data-k]");
+    if (keyEl) {
+      const k = Number(keyEl.dataset.k);
+      piano.notes = piano.notes.includes(k) ? piano.notes.filter((n) => n !== k) : [...piano.notes, k].sort((a, b) => a - b);
+      e.target.closest(".chord-item").querySelector(".kb-scroll").innerHTML = keyboardSvg(piano.notes);
+      saveChordSheet();
+      return;
+    }
+    if (e.target.closest(".chord-clear")) {
+      piano.notes = [];
+      e.target.closest(".chord-item").querySelector(".kb-scroll").innerHTML = keyboardSvg(piano.notes);
+      saveChordSheet();
+      return;
+    }
+    if (e.target.closest(".chord-remove")) {
+      chordSheet.pianos = chordSheet.pianos.filter((p) => p.id !== piano.id);
+      if (chordSheet.pianos.length === 0) chordSheet.pianos.push(newChordPiano());
+      saveChordSheet();
+      renderChordEditor();
+    }
+  });
+  document.getElementById("chord-list").addEventListener("input", (e) => {
+    if (!e.target.classList.contains("chord-name")) return;
+    const piano = chordPianoFor(e.target);
+    if (piano) { piano.name = e.target.value; saveChordSheet(); }
+  });
+  document.getElementById("chord-title").addEventListener("input", (e) => {
+    chordSheet.title = e.target.value;
+    saveChordSheet();
+  });
+  document.getElementById("chord-toggle").addEventListener("click", () => {
+    const ed = document.getElementById("chord-editor");
+    ed.hidden = !ed.hidden;
+    document.getElementById("chord-toggle").textContent = ed.hidden ? "Åbn akkordark" : "Luk akkordark";
+    if (!ed.hidden) renderChordEditor();
+  });
+  document.getElementById("chord-add").addEventListener("click", () => {
+    const p = newChordPiano();
+    chordSheet.pianos.push(p);
+    saveChordSheet();
+    renderChordEditor();
+    const input = document.querySelector('.chord-item[data-id="' + p.id + '"] .chord-name');
+    if (input) input.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  document.getElementById("chord-new").addEventListener("click", () => {
+    if (!confirm("Vil du starte et nyt, tomt akkordark? Det nuværende ark slettes.")) return;
+    chordSheet.title = "";
+    chordSheet.pianos = [newChordPiano(), newChordPiano(), newChordPiano()];
+    saveChordSheet();
+    renderChordEditor();
+  });
+  document.getElementById("chord-print").addEventListener("click", () => {
+    const root = document.getElementById("chord-print-root");
+    const pages = [];
+    for (let i = 0; i < chordSheet.pianos.length; i += CHORD_PER_PAGE) pages.push(chordSheet.pianos.slice(i, i + CHORD_PER_PAGE));
+    root.innerHTML = pages
+      .map((group, pi) =>
+        '<div class="cp-page">' +
+        (pi === 0 && chordSheet.title.trim() ? "<h1>" + escHtml(chordSheet.title.trim()) + "</h1>" : "") +
+        group
+          .map((p) =>
+            '<div class="cp-item">' + keyboardSvg(p.notes) +
+            '<div class="cp-name' + (p.name.trim() ? "" : " empty") + '">' + escHtml(p.name.trim()) + "</div></div>"
+          )
+          .join("") +
+        "</div>"
+      )
+      .join("");
+    document.body.classList.add("printing-chords");
+    const oldTitle = document.title;
+    if (chordSheet.title.trim()) document.title = chordSheet.title.trim(); // bliver PDF'ens filnavn
+    const done = () => {
+      document.body.classList.remove("printing-chords");
+      document.title = oldTitle;
+      window.removeEventListener("afterprint", done);
+    };
+    window.addEventListener("afterprint", done);
+    setTimeout(() => window.print(), 50);
+  });
 
   // ───────────────────────── Init ─────────────────────────
   async function init() {
