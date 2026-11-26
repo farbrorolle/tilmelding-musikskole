@@ -254,6 +254,21 @@
 
   footer.site { border-top: 1px solid var(--border-soft); padding: 22px 0 40px; text-align: center; color: var(--ink-faint); font-size: 12.5px; }
 
+  /* ───────────────────────── Elever ───────────────────────── */
+  .stu-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .stu-card-meta { font-size: 13px; color: var(--ink-soft); margin-top: 8px; line-height: 1.5; }
+  .stu-card-meta b { color: var(--ink); font-weight: 600; }
+  .stu-focus-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stu-subtabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border-soft); }
+  .stu-subtab { border: 1px solid var(--border); background: var(--bg); color: var(--ink); font-family: inherit; font-size: 14px; font-weight: 600; padding: 9px 16px; border-radius: 999px; cursor: pointer; }
+  .stu-subtab:hover { border-color: var(--ink-faint); }
+  .stu-subtab.active { background: var(--ink); color: var(--bg-raised); border-color: var(--ink); }
+  .stu-pane[hidden] { display: none; }
+  .stu-viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stu-frame { display: block; width: 100%; height: 78vh; min-height: 520px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
+  .stu-field-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); margin: 18px 0 8px; }
+  .stu-select { font-family: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; }
+
   /* ───────────────────────── Akkordark ─────────────────────────
      Arket vises som et hvidt "papir" uanset lyst/mørkt tema, så det ser ud
      som det bliver udskrevet. */
@@ -302,6 +317,7 @@
       <button class="tab-btn active" data-tab="today" role="tab" aria-selected="true" id="tab-btn-today">I dag</button>
       <button class="tab-btn" data-tab="teachdays" role="tab" aria-selected="false" id="tab-btn-teachdays">Undervisningsdage</button>
       <button class="tab-btn" data-tab="planning" role="tab" aria-selected="false" id="tab-btn-planning">Planlægning</button>
+      <button class="tab-btn" data-tab="students" role="tab" aria-selected="false" id="tab-btn-students">Elever</button>
     </div>
     <button class="btn-text" id="laerer-logout" hidden>Log ud</button>
   </div>
@@ -438,6 +454,42 @@
       </div>
     </div>
   </section>
+
+  <!-- ═══════════════════════ ELEVER ═══════════════════════
+       Overblik over alle elever. Fra hver elev kan Olle (1) lægge materiale
+       på elevens side, (2) planlægge næste lektion, eller (3) se elevens side
+       præcis som eleven ser den (/elev i en iframe — lærerkontoen må i
+       forvejen læse alle elevers data via RLS). -->
+  <section class="view" id="view-students">
+    <div class="wrap">
+      <div id="students-overview-wrap">
+        <div class="page-head"><h1>Elever</h1><p>Overblik over alle elever. Læg materiale på elevens side, planlæg næste lektion, eller se siden præcis som eleven ser den.</p></div>
+        <div id="students-overview"></div>
+      </div>
+      <div id="student-focus" hidden>
+        <button class="btn-text" id="student-back" style="font-size:13.5px;margin:8px 0 12px;">← Alle elever</button>
+        <div class="panel">
+          <div class="stu-focus-head">
+            <div><h2 id="stu-focus-name" style="font-size:26px;font-weight:500;"></h2><p id="stu-focus-sub" style="color:var(--ink-soft);font-size:13.5px;margin-top:4px;"></p></div>
+          </div>
+          <div class="stu-subtabs" role="tablist" aria-label="Vælg hvad du vil gøre">
+            <button type="button" class="stu-subtab" data-pane="material" role="tab">📎 Materiale</button>
+            <button type="button" class="stu-subtab" data-pane="plan" role="tab">📝 Planlæg næste lektion</button>
+            <button type="button" class="stu-subtab" data-pane="view" role="tab">👀 Se som elev</button>
+          </div>
+          <div class="stu-pane" id="stu-pane-material"></div>
+          <div class="stu-pane" id="stu-pane-plan"></div>
+          <div class="stu-pane" id="stu-pane-view">
+            <div class="stu-viewer-head">
+              <p style="font-size:13.5px;color:var(--ink-soft);">Sådan ser elevens side ud lige nu. Kun du ser rammen “Forhåndsvisning”.</p>
+              <a class="btn btn-ghost btn-small" id="student-page-newtab" href="#" target="_blank" rel="noopener" style="text-decoration:none;">Åbn i ny fane ↗</a>
+            </div>
+            <iframe id="student-page-frame" class="stu-frame" title="Elevens side" src="about:blank"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer class="site">Lærerens værktøjer · Olles lille musikskole — rigtig database, rigtig login.<br><span style="display:inline-block;margin-top:6px;">Google Kalender-invitationer og e-conomic-fakturering kobles på i et senere trin.</span></footer>
@@ -512,7 +564,7 @@
   // ───────────────────────── Faner ─────────────────────────
   document.querySelectorAll(".tab-btn").forEach((btn) => btn.addEventListener("click", () => switchView(btn.dataset.tab)));
   function switchView(name) {
-    ["planning", "today", "teachdays"].forEach((v) => document.getElementById("view-" + v).classList.toggle("active", v === name));
+    ["planning", "today", "teachdays", "students"].forEach((v) => document.getElementById("view-" + v).classList.toggle("active", v === name));
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       const active = btn.dataset.tab === name;
       btn.classList.toggle("active", active);
@@ -521,6 +573,7 @@
     if (name === "planning") renderPlanning();
     if (name === "today") renderToday();
     if (name === "teachdays") renderTeachDays();
+    if (name === "students") renderStudentPages();
   }
 
   // "I dag" kan navigeres frem/tilbage dag for dag, så Olle kan forberede sig på
@@ -1023,12 +1076,8 @@
         '<span class="account-ctrl" style="white-space:nowrap;"></span>' +
         '<div class="assign-form" hidden style="flex-basis:100%;"></div>';
       wireAccountCtrl(row.querySelector(".account-ctrl"), a.student);
-      // Åbner elevens egen side (/elev) i en ny fane, som eleven ser den.
-      // Lærerkontoen må i forvejen læse alle elevers data, så der kræves
-      // hverken elevens adgangskode eller at eleven har en konto endnu.
-      row.querySelector(".view-student-page").addEventListener("click", () => {
-        window.open("/elev/?elev=" + encodeURIComponent(a.student_id), "_blank");
-      });
+      // Viser elevens egen side under fanen "Elevsider".
+      row.querySelector(".view-student-page").addEventListener("click", () => showStudentPage(a.student_id, "view"));
       row.querySelector(".edit-time-toggle").addEventListener("click", () => {
         const form = row.querySelector(".assign-form");
         const isOpen = !form.hidden;
@@ -1523,6 +1572,7 @@
         '<span class="tag tag-instr">' + (a.instrument || "") + "</span>" +
         (a.is_trial ? '<span class="tag tag-trial">Prøvelektion</span>' : "") + "</span>" +
         (isDone ? '<span class="tag tag-done">Fremmøde registreret</span>' : "") +
+        '<button class="btn-text see-student-page">Se elevens side</button>' +
         '<button class="btn-text open-lesson">Åbn</button>' +
         "</div>" +
         (a.student.current_focus ? '<p class="lesson-focus">' + a.student.current_focus + "</p>" : "") +
@@ -1539,6 +1589,7 @@
         if (!error) { a.student.current_focus = prepEl.value; toast("Note gemt til " + a.student.name + "s lektion i dag."); }
       });
 
+      card.querySelector(".see-student-page").addEventListener("click", () => showStudentPage(a.student_id, "view"));
       const openBtn = card.querySelector(".open-lesson");
       const detailEl = card.querySelector(".lesson-card-detail");
       function openLessonDetail() {
@@ -1736,6 +1787,281 @@
     detail.querySelector(".add-file").addEventListener("click", () => fileInput.click());
     videoInput.addEventListener("change", () => uploadMedia(videoInput.files[0], "video"));
     fileInput.addEventListener("change", () => uploadMedia(fileInput.files[0], "file"));
+  }
+
+  // ═══════════════════════ ELEVER ═══════════════════════
+  // Overblik over alle elever (med fast tid først, efter ugedag/tid), og en
+  // fokusvisning for én elev med tre faner: Materiale, Planlæg næste lektion
+  // og Se som elev. Material lægges op til en valgt lektionsdato.
+  state.studentPageId = null;   // valgt elev i fokusvisningen (null = overblik)
+  state.studentPane = "material";
+  state.studentMaterialDate = {}; // valgt lektionsdato pr. elev
+  function studentPageUrl(id) { return "/elev/?elev=" + encodeURIComponent(id); }
+  function possessive(name) { return name + (/[sxz]$/i.test(name) ? "’" : "s"); }
+  function firstName(name) { return String(name || "").split(" ")[0]; }
+  function assignmentFor(studentId) { return assignments.find((a) => a.student_id === studentId) || null; }
+  // Kommende lektionsdatoer (inkl. i dag), uden aflyste dage.
+  function upcomingLessonDates(a, count) {
+    const out = [];
+    if (!a) return out;
+    let iso = isoToday();
+    for (let i = 0; i < 120 && out.length < count; i++) {
+      if (weekdayIdxForIso(iso) === a.weekday && !isCancelled(iso)) out.push(iso);
+      iso = isoAddDays(iso, 1);
+    }
+    return out;
+  }
+  function studentRows() {
+    const rows = [];
+    const seen = new Set();
+    assignments
+      .slice()
+      .sort((x, y) => x.weekday - y.weekday || x.start_time.localeCompare(y.start_time))
+      .forEach((a) => { if (!seen.has(a.student_id)) { seen.add(a.student_id); rows.push({ student: a.student, a }); } });
+    students
+      .filter((st) => !seen.has(st.id))
+      .sort((x, y) => x.name.localeCompare(y.name, "da"))
+      .forEach((st) => rows.push({ student: st, a: null }));
+    return rows;
+  }
+  // Åbner fanen "Elever" direkte på en bestemt elev og en bestemt underfane.
+  function showStudentPage(studentId, pane) {
+    state.studentPageId = studentId;
+    state.studentPane = pane || "view";
+    switchView("students");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function renderStudentPages() {
+    const focus = document.getElementById("student-focus");
+    const overviewWrap = document.getElementById("students-overview-wrap");
+    const rows = studentRows();
+    const row = state.studentPageId ? rows.find((r) => r.student.id === state.studentPageId) : null;
+    if (!row) {
+      state.studentPageId = null;
+      focus.hidden = true;
+      overviewWrap.hidden = false;
+      renderStudentsOverview(rows);
+      return;
+    }
+    overviewWrap.hidden = true;
+    focus.hidden = false;
+    renderStudentFocus(row);
+  }
+  function renderStudentsOverview(rows) {
+    const el = document.getElementById("students-overview");
+    if (!rows.length) { el.innerHTML = '<div class="panel"><p class="empty-state">Ingen elever endnu.</p></div>'; return; }
+    el.innerHTML = '<div class="panel">' + rows.map((r, idx) => {
+      const st = r.student;
+      const colorKey = studentColorKey(idx);
+      const next = upcomingLessonDates(r.a, 1)[0];
+      const mediaCount = lessonMedia.filter((m) => m.student_id === st.id).length;
+      const plan = (st.current_focus || "").trim();
+      return (
+        '<div class="lesson-card color-' + colorKey + '" data-id="' + st.id + '">' +
+        '<div class="lesson-card-top"><span class="lesson-avatar color-' + colorKey + '">' + escHtml(initials(st.name)) + "</span>" +
+        '<span class="row-title"><span class="name">' + escHtml(st.name) + "</span>" +
+        (r.a ? '<span class="tag tag-recurring">' + escHtml(slotLabel(r.a.weekday, r.a.start_time, r.a.end_time)) + "</span>" : '<span class="tag">Ingen fast tid</span>') +
+        "</span></div>" +
+        '<p class="stu-card-meta">' +
+        (next ? "<b>Næste lektion:</b> " + escHtml(formatDate(next)) + (next === isoToday() ? " (i dag)" : "") + " · " : "") +
+        "<b>Plan:</b> " + (plan ? escHtml(plan.length > 90 ? plan.slice(0, 90) + "…" : plan) : "ingen endnu") +
+        " · <b>Materiale:</b> " + mediaCount + "</p>" +
+        '<div class="stu-card-actions">' +
+        '<button type="button" class="btn btn-ghost btn-small" data-go="material">📎 Materiale</button>' +
+        '<button type="button" class="btn btn-ghost btn-small" data-go="plan">📝 Planlæg næste lektion</button>' +
+        '<button type="button" class="btn btn-ghost btn-small" data-go="view">👀 Se som elev</button>' +
+        "</div></div>"
+      );
+    }).join("") + "</div>";
+    el.querySelectorAll("[data-go]").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        state.studentPageId = btn.closest("[data-id]").dataset.id;
+        state.studentPane = btn.dataset.go;
+        renderStudentPages();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      })
+    );
+  }
+  function renderStudentFocus(row) {
+    const st = row.student;
+    const a = row.a;
+    const next = upcomingLessonDates(a, 1)[0];
+    document.getElementById("stu-focus-name").textContent = st.name;
+    document.getElementById("stu-focus-sub").textContent =
+      (a ? "Fast tid: " + slotLabel(a.weekday, a.start_time, a.end_time) + " hver uge" : "Ingen fast tid endnu") +
+      (next ? " · Næste lektion: " + formatDate(next) + (next === isoToday() ? " (i dag)" : "") : "");
+    document.querySelectorAll(".stu-subtab").forEach((b) => {
+      const on = b.dataset.pane === state.studentPane;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on);
+    });
+    ["material", "plan", "view"].forEach((p) => { document.getElementById("stu-pane-" + p).hidden = p !== state.studentPane; });
+    if (state.studentPane === "material") renderStudentMaterialPane(st, a);
+    if (state.studentPane === "plan") renderStudentPlanPane(st, a, next);
+    if (state.studentPane === "view") {
+      document.getElementById("student-page-newtab").href = studentPageUrl(st.id);
+      // Genindlæses hver gang, så nyt materiale og nye noter altid er med.
+      document.getElementById("student-page-frame").src = studentPageUrl(st.id) + "&t=" + Date.now();
+    } else {
+      document.getElementById("student-page-frame").src = "about:blank";
+    }
+  }
+  document.querySelectorAll(".stu-subtab").forEach((b) =>
+    b.addEventListener("click", () => { state.studentPane = b.dataset.pane; renderStudentPages(); })
+  );
+  document.getElementById("student-back").addEventListener("click", () => {
+    state.studentPageId = null;
+    renderStudentPages();
+  });
+
+  // ── Materiale ──
+  async function uploadMaterial(studentId, dateIso, file, type) {
+    const path = studentId + "/" + crypto.randomUUID() + "-" + safeFileName(file.name);
+    const { error: upErr } = await sb.storage.from("lesson-media").upload(path, file, file.type ? { contentType: file.type } : undefined);
+    if (upErr) throw upErr;
+    const { error: insErr } = await sb.from("lesson_media").insert({ student_id: studentId, lesson_date: dateIso, type, title: file.name, storage_path: path });
+    if (insErr) { await sb.storage.from("lesson-media").remove([path]); throw insErr; }
+  }
+  async function attachDocument(studentId, dateIso, doc) {
+    const { data: blob, error: dlErr } = await sb.storage.from("lesson-media").download(doc.storage_path);
+    if (dlErr) throw dlErr;
+    const fileName = (doc.title || "Dokument") + ".pdf";
+    const path = studentId + "/" + crypto.randomUUID() + "-" + safeFileName(fileName);
+    const { error: upErr } = await sb.storage.from("lesson-media").upload(path, blob, { contentType: "application/pdf" });
+    if (upErr) throw upErr;
+    const { error: insErr } = await sb.from("lesson_media").insert({ student_id: studentId, lesson_date: dateIso, type: "file", title: fileName, storage_path: path });
+    if (insErr) { await sb.storage.from("lesson-media").remove([path]); throw insErr; }
+  }
+  function renderStudentMaterialPane(st, a) {
+    const pane = document.getElementById("stu-pane-material");
+    const dates = upcomingLessonDates(a, 6);
+    const today = isoToday();
+    if (!dates.includes(today)) dates.unshift(today);
+    let chosen = state.studentMaterialDate[st.id];
+    if (!chosen || !dates.includes(chosen)) chosen = (a && upcomingLessonDates(a, 1)[0]) || today;
+    state.studentMaterialDate[st.id] = chosen;
+    const media = lessonMedia
+      .filter((m) => m.student_id === st.id)
+      .sort((x, y) => (y.lesson_date || "").localeCompare(x.lesson_date || "") || (y.created_at || "").localeCompare(x.created_at || ""));
+    pane.innerHTML =
+      '<p class="stu-field-label" style="margin-top:0;">Til lektionen</p>' +
+      '<select class="stu-select" id="stu-mat-date" aria-label="Vælg lektion">' +
+      dates.map((d) => '<option value="' + d + '"' + (d === chosen ? " selected" : "") + ">" + escHtml(formatDate(d)) + (d === today ? " (i dag)" : "") + (a && weekdayIdxForIso(d) === a.weekday ? "" : " — ikke en fast lektionsdag") + "</option>").join("") +
+      "</select>" +
+      '<p class="stu-field-label">Læg op</p>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+      '<div class="upload-drop" id="stu-add-video" style="flex:1;min-width:180px;">＋ Tilføj video</div>' +
+      '<div class="upload-drop" id="stu-add-file" style="flex:1;min-width:180px;">＋ Tilføj fil (fx PDF, billede)</div>' +
+      '<input type="file" accept="video/*" id="stu-input-video" hidden>' +
+      '<input type="file" id="stu-input-file" hidden>' +
+      "</div>" +
+      '<div class="doc-attach" style="margin-top:12px;">' +
+      '<div class="doc-attach-has"' + (teacherDocuments.length ? "" : " hidden") + '><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+      '<select class="doc-select stu-select" aria-label="Vælg gemt dokument" style="flex:1;min-width:180px;">' + docOptionsHtml() + "</select>" +
+      '<button type="button" class="btn btn-ghost btn-small" id="stu-attach-doc">Læg gemt dokument på ' + escHtml(possessive(firstName(st.name))) + " side</button>" +
+      "</div></div>" +
+      '<p class="doc-attach-empty empty-state" style="padding:4px 0;font-size:12.5px;"' + (teacherDocuments.length ? " hidden" : "") + '>Ingen gemte dokumenter endnu — lav et akkordark under “I dag” og tryk “Gem som dokument”.</p>' +
+      "</div>" +
+      '<p class="stu-field-label">På ' + escHtml(possessive(firstName(st.name))) + " side nu (" + media.length + ")</p>" +
+      (media.length
+        ? media.map((m) =>
+            '<div class="divider-row" data-media-id="' + m.id + '" style="padding:9px 0;flex-wrap:wrap;">' +
+            '<span class="mono-date">' + escHtml(m.lesson_date ? formatDate(m.lesson_date) : "") + "</span>" +
+            '<span class="row-title" style="font-size:13.5px;">' + (m.type === "video" ? "▶ " : "📄 ") + escHtml(m.title) + "</span>" +
+            '<span style="display:flex;gap:10px;margin-left:auto;"><button type="button" class="btn-text stu-media-open">Åbn</button><button type="button" class="btn-text danger stu-media-delete">Fjern</button></span>' +
+            "</div>"
+          ).join("")
+        : '<p class="empty-state" style="padding:8px 0;">Intet materiale endnu.</p>');
+
+    const dateSel = pane.querySelector("#stu-mat-date");
+    dateSel.addEventListener("change", () => { state.studentMaterialDate[st.id] = dateSel.value; });
+    const vIn = pane.querySelector("#stu-input-video");
+    const fIn = pane.querySelector("#stu-input-file");
+    pane.querySelector("#stu-add-video").addEventListener("click", () => vIn.click());
+    pane.querySelector("#stu-add-file").addEventListener("click", () => fIn.click());
+    async function doUpload(input, type) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      toast("Lægger " + escHtml(file.name) + " op …");
+      try {
+        await uploadMaterial(st.id, dateSel.value, file, type);
+        await refreshMedia();
+        renderStudentFocus({ student: st, a });
+        toast((type === "video" ? "Videoen" : "Filen") + " er lagt på " + escHtml(possessive(firstName(st.name))) + " side.");
+      } catch (err) {
+        toast("Upload fejlede: " + escHtml(err && err.message ? err.message : String(err)));
+      }
+    }
+    vIn.addEventListener("change", () => doUpload(vIn, "video"));
+    fIn.addEventListener("change", () => doUpload(fIn, "file"));
+    pane.querySelector("#stu-attach-doc").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      const doc = teacherDocuments.find((d) => d.id === pane.querySelector(".doc-select").value);
+      if (!doc) { toast("Vælg et dokument først."); return; }
+      btn.disabled = true;
+      try {
+        await attachDocument(st.id, dateSel.value, doc);
+        await refreshMedia();
+        renderStudentFocus({ student: st, a });
+        toast("“" + escHtml(doc.title) + "” er lagt på " + escHtml(possessive(firstName(st.name))) + " side.");
+      } catch (err) {
+        btn.disabled = false;
+        toast("Kunne ikke tilføje dokumentet: " + escHtml(err && err.message ? err.message : String(err)));
+      }
+    });
+    pane.querySelectorAll("[data-media-id]").forEach((rowEl) => {
+      const m = media.find((x) => x.id === rowEl.dataset.mediaId);
+      rowEl.querySelector(".stu-media-open").addEventListener("click", async () => {
+        const w = window.open("", "_blank");
+        const { data, error } = await sb.storage.from("lesson-media").createSignedUrl(m.storage_path, 600);
+        if (error || !data) { if (w) w.close(); toast("Kunne ikke åbne filen."); return; }
+        if (w) w.location.href = data.signedUrl; else location.href = data.signedUrl;
+      });
+      rowEl.querySelector(".stu-media-delete").addEventListener("click", async () => {
+        if (!confirm("Fjern “" + m.title + "” fra " + possessive(firstName(st.name)) + " side?")) return;
+        const { error } = await sb.from("lesson_media").delete().eq("id", m.id);
+        if (error) { toast("Kunne ikke fjerne filen: " + escHtml(error.message)); return; }
+        await sb.storage.from("lesson-media").remove([m.storage_path]);
+        await refreshMedia();
+        renderStudentFocus({ student: st, a });
+        toast("Fjernet fra elevens side.");
+      });
+    });
+  }
+
+  // ── Planlæg næste lektion ──
+  // Planen gemmes i students.current_focus — samme felt som "Note til i
+  // dag — hvad skal I kigge på?" på elevens kort under "I dag", så den står
+  // klar der på lektionsdagen. Den vises ikke på elevens side.
+  function renderStudentPlanPane(st, a, next) {
+    const pane = document.getElementById("stu-pane-plan");
+    const lastNote = lastNoteFor(st.id);
+    const lastPriv = lastTeacherNoteFor(st.id);
+    pane.innerHTML =
+      '<p style="font-size:14px;margin-bottom:6px;">' +
+      (next ? "Næste lektion: <b>" + escHtml(formatDate(next)) + (a ? " kl. " + escHtml(a.start_time.slice(0, 5)) : "") + "</b>" : "Eleven har ingen fast tid endnu.") +
+      "</p>" +
+      (lastNote ? '<p class="lesson-lastnote"><span class="ll-label">Sidste note til eleven (' + escHtml(formatDate(lastNote.lesson_date)) + ")</span>" + escHtml(lastNote.summary) + "</p>" : "") +
+      (lastPriv ? '<p class="lesson-lastnote" style="opacity:0.85;"><span class="ll-label">Din sidste private note (' + escHtml(formatDate(lastPriv.lesson_date)) + ")</span>" + escHtml(lastPriv.note) + "</p>" : "") +
+      '<label class="field"><span>Plan til næste lektion — hvad skal I kigge på?</span>' +
+      '<textarea id="stu-plan-text" rows="5" placeholder="F.eks. C-dur og G7, venstre hånd i tempo 80, ny sang: …">' + escHtml(st.current_focus || "") + "</textarea></label>" +
+      '<p style="font-size:12.5px;color:var(--ink-soft);margin:8px 0 12px;">Står klar på elevens kort under “I dag” på lektionsdagen. Eleven ser den ikke.</p>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+      '<button type="button" class="btn btn-primary btn-small" id="stu-plan-save">Gem plan</button>' +
+      '<button type="button" class="btn btn-ghost btn-small" id="stu-plan-to-material">📎 Læg materiale op til lektionen</button>' +
+      "</div>";
+    pane.querySelector("#stu-plan-save").addEventListener("click", async () => {
+      const val = pane.querySelector("#stu-plan-text").value;
+      const { error } = await sb.from("students").update({ current_focus: val }).eq("id", st.id);
+      if (error) { toast("Kunne ikke gemme planen: " + escHtml(error.message)); return; }
+      st.current_focus = val;
+      toast("Planen for " + escHtml(possessive(firstName(st.name))) + " næste lektion er gemt.");
+    });
+    pane.querySelector("#stu-plan-to-material").addEventListener("click", () => {
+      if (next) state.studentMaterialDate[st.id] = next;
+      state.studentPane = "material";
+      renderStudentPages();
+    });
   }
 
   // ═══════════════════════ AKKORDARK ═══════════════════════
