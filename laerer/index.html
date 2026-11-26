@@ -1522,7 +1522,8 @@
         '<span class="row-title"><span class="name">' + a.student.name + "</span>" +
         '<span class="tag tag-instr">' + (a.instrument || "") + "</span>" +
         (a.is_trial ? '<span class="tag tag-trial">Prøvelektion</span>' : "") + "</span>" +
-        (isDone ? '<span class="tag tag-done">Fremmøde registreret</span>' : '<button class="btn-text open-lesson">Åbn</button>') +
+        (isDone ? '<span class="tag tag-done">Fremmøde registreret</span>' : "") +
+        '<button class="btn-text open-lesson">Åbn</button>' +
         "</div>" +
         (a.student.current_focus ? '<p class="lesson-focus">' + a.student.current_focus + "</p>" : "") +
         '<div class="lesson-quicknote">' +
@@ -1542,7 +1543,7 @@
       const detailEl = card.querySelector(".lesson-card-detail");
       function openLessonDetail() {
         detailEl.hidden = false;
-        detailEl.innerHTML = buildLessonDetailHtml(a);
+        detailEl.innerHTML = buildLessonDetailHtml(a, viewIso);
         wireLessonDetail(detailEl, a, viewIso);
         if (openBtn) openBtn.textContent = "Luk";
       }
@@ -1558,7 +1559,11 @@
     });
   }
 
-  function buildLessonDetailHtml(a) {
+  function buildLessonDetailHtml(a, viewIso) {
+    // OBS (2026-11-26): kortet kan nu også åbnes EFTER at fremmøde er
+    // registreret, så Olle kan lægge video/akkordark op og sende en note
+    // bagefter. Knappen skifter så fra "Registrér fremmøde" til "Send note".
+    const doneAlready = (() => { const att = attendanceForDate(a.student_id, viewIso || isoToday()); return !!(att && att.status === "done"); })();
     const media = lessonMedia.filter((m) => m.student_id === a.student_id);
     const videos = media.filter((m) => m.type === "video");
     const files = media.filter((m) => m.type === "file");
@@ -1578,8 +1583,11 @@
       : '<p class="empty-state" style="padding:12px 0;">Ingen private noter endnu.</p>';
     return (
       '<label class="field" style="margin-top:0;"><span>Note til eleven — hvad har I arbejdet med i dag?</span><textarea class="student-note" placeholder="Skrives til eleven, når du registrerer fremmøde — vises på elevens egen side."></textarea></label>' +
-      '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">' + (a.is_trial ? "Prøvelektion — tilføjes til fakturering separat." : "Tilføjes blandt lektioner der skal faktureres.") + "</p>" +
-      '<button class="btn btn-primary btn-small register-attendance">Registrér fremmøde &amp; send note</button>' +
+      (doneAlready
+        ? '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">Fremmøde er allerede registreret. Du kan stadig sende en note og lægge video, filer eller akkordark op herunder.</p>' +
+          '<button class="btn btn-primary btn-small register-attendance">Send note til eleven</button>'
+        : '<p style="font-size:12.5px;color:var(--ink-soft);margin:14px 0 10px;">' + (a.is_trial ? "Prøvelektion — tilføjes til fakturering separat." : "Tilføjes blandt lektioner der skal faktureres.") + "</p>" +
+          '<button class="btn btn-primary btn-small register-attendance">Registrér fremmøde &amp; send note</button>') +
       '<div style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--border);">' +
       '<label class="field" style="margin-top:0;"><span>Privat note (kun til dig — eleven ser aldrig denne)</span><textarea class="teacher-note" placeholder="Til dig selv — fx hvad eleven kæmper med, hvad I skal huske til næste gang, forældrekontakt osv."></textarea></label>' +
       '<button class="btn btn-ghost btn-small save-teacher-note">Gem privat note</button>' +
@@ -1593,7 +1601,8 @@
       (a.student.phone ? '<a class="btn btn-ghost btn-small" style="text-decoration:none;" href="tel:' + a.student.phone + '">📞 ' + a.student.phone + "</a>" : "") +
       '<a class="btn btn-ghost btn-small" style="text-decoration:none;" href="mailto:' + a.student.email + '">✉ ' + a.student.email + "</a>" +
       "</div></div>" +
-      '<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">' +
+      '<p style="font-size:11.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--ink-faint);margin:18px 0 0;">Materiale til ' + a.student.name.split(" ")[0] + " — " + formatDate(viewIso || isoToday()) + "</p>" +
+      '<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">' +
       '<div class="upload-drop add-video" style="flex:1;min-width:180px;">＋ Tilføj video</div>' +
       '<div class="upload-drop add-file" style="flex:1;min-width:180px;">＋ Tilføj fil (fx akkorder, PDF)</div>' +
       '<input type="file" accept="video/*" class="file-input-video" hidden>' +
@@ -1643,7 +1652,7 @@
       if (error) { toast("Kunne ikke gemme den private note: " + error.message); return; }
       teacherNoteEl.value = "";
       await refreshTeacherNotes();
-      detail.innerHTML = buildLessonDetailHtml(a);
+      detail.innerHTML = buildLessonDetailHtml(a, viewIso);
       wireLessonDetail(detail, a, viewIso);
       renderToday();
       toast("Privat note gemt — eleven ser den aldrig.");
@@ -1651,6 +1660,16 @@
     detail.querySelector(".register-attendance").addEventListener("click", async () => {
       const price = lessonPrices[a.instrument] || lessonPrices["Andet"] || 0;
       const noteText = (noteEl ? noteEl.value : "").trim();
+      const prevAtt = attendanceForDate(a.student_id, lessonDateIso);
+      if (prevAtt && prevAtt.status === "done") {
+        if (!noteText) { toast("Skriv en note først."); return; }
+        const { error: noteErr } = await sb.from("lesson_notes").insert({ student_id: a.student_id, lesson_date: lessonDateIso, summary: noteText, sent_to_student: true });
+        if (noteErr) { toast("Noten kunne ikke gemmes: " + noteErr.message); return; }
+        await refreshNotes();
+        renderToday();
+        toast("Noten er sendt til " + a.student.name + ".");
+        return;
+      }
 
       const { error: attErr } = await sb.from("attendance_log").upsert(
         { student_id: a.student_id, recurring_assignment_id: a.id, lesson_date: lessonDateIso, status: "done", price_at_time: price },
@@ -1677,7 +1696,7 @@
       const { error: insErr } = await sb.from("lesson_media").insert({ student_id: a.student_id, lesson_date: lessonDateIso, type, title: file.name, storage_path: path });
       if (insErr) { toast("Filen blev uploadet, men kunne ikke gemmes: " + insErr.message); return; }
       await refreshMedia();
-      detail.innerHTML = buildLessonDetailHtml(a);
+      detail.innerHTML = buildLessonDetailHtml(a, viewIso);
       wireLessonDetail(detail, a, viewIso);
       toast((type === "video" ? "Video" : "Fil") + " tilføjet — læg gerne flere op, én ad gangen.");
     }
@@ -1701,7 +1720,7 @@
         // Bevar halvskrevne noter, når kortet tegnes om.
         const keepStudent = noteEl ? noteEl.value : "";
         const keepTeacher = teacherNoteEl ? teacherNoteEl.value : "";
-        detail.innerHTML = buildLessonDetailHtml(a);
+        detail.innerHTML = buildLessonDetailHtml(a, viewIso);
         wireLessonDetail(detail, a, viewIso);
         const sn = detail.querySelector(".student-note"); if (sn) sn.value = keepStudent;
         const tn = detail.querySelector(".teacher-note"); if (tn) tn.value = keepTeacher;
