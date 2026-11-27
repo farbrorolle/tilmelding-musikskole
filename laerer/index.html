@@ -1133,10 +1133,10 @@
     } catch (err) {
       toast("Kunne ikke oprette konto — prøv igen.");
     }
-    // Ny konto → fortsæt direkte til invitationen. Var mailen allerede i brug
-    // (søskende/eksisterende konto), har familien allerede en adgangskode —
-    // så sendes der ingen "vælg adgangskode"-mail automatisk.
-    if (data && data.ok && quiet && !data.linked_to_existing_account && !data.already_existed) {
+    // Fortsæt altid direkte til invitationen — også når mailen allerede hørte
+    // til en konto (søskende/gammel konto): linket i mailen lader dem vælge
+    // (en ny) adgangskode, så de kan logge ind uanset hvad.
+    if (data && data.ok && quiet) {
       await refreshElevProfiles();
       return true;
     }
