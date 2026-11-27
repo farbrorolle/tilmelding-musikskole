@@ -490,6 +490,9 @@
             <div><h2 id="stu-focus-name" style="font-size:26px;font-weight:500;"></h2><p id="stu-focus-sub" style="color:var(--ink-soft);font-size:13.5px;margin-top:4px;"></p></div>
             <div id="stu-focus-price"></div>
           </div>
+          <div style="margin:-6px 0 14px;"><button type="button" class="btn-text" id="stu-edit-toggle">Rediger oplysninger (navn, mail, telefon)</button>
+            <div id="stu-edit-form" class="book-form" hidden></div>
+          </div>
           <div class="stu-subtabs" role="tablist" aria-label="Vælg hvad du vil gøre">
             <button type="button" class="stu-subtab" data-pane="material" role="tab">📎 Materiale</button>
             <button type="button" class="stu-subtab" data-pane="plan" role="tab">📝 Planlæg &amp; book</button>
@@ -857,7 +860,7 @@
     container.innerHTML =
       '<div class="bf-grid">' +
       '<label class="field"><span>Navn</span><input type="text" class="ns-name" value="' + escHtml(pf.name || "") + '"></label>' +
-      '<label class="field"><span>Mailadresse</span><input type="email" class="ns-email" value="' + escHtml(pf.email || "") + '"></label>' +
+      '<label class="field"><span>Mailadresse (kan tilføjes senere)</span><input type="email" class="ns-email" value="' + escHtml(pf.email || "") + '"></label>' +
       '<label class="field"><span>Telefon</span><input type="tel" class="ns-phone" value="' + escHtml(pf.phone || "") + '"></label>' +
       '<label class="field"><span>Instrument / ønsker</span><input type="text" class="ns-instrument" value="' + escHtml(pf.instrument || "") + '"></label>' +
       '<label class="field"><span>Pris hjemme hos dig (kr.)</span><input type="number" min="0" step="10" class="ns-price" placeholder="fx 300"></label>' +
@@ -878,7 +881,7 @@
         price: container.querySelector(".ns-price").value === "" ? null : Math.round(Number(container.querySelector(".ns-price").value)),
         priceHome: container.querySelector(".ns-price-home").value === "" ? null : Math.round(Number(container.querySelector(".ns-price-home").value)),
       };
-      if (!info.name || !info.email) { toast("Udfyld i det mindste navn og mail."); return; }
+      if (!info.name) { toast("Skriv i det mindste et navn."); return; }
       if ((info.price !== null && (!Number.isFinite(info.price) || info.price < 0)) || (info.priceHome !== null && (!Number.isFinite(info.priceHome) || info.priceHome < 0))) { toast("Priserne skal være tal."); return; }
       btn.disabled = true;
       const res = await createStudent(info);
@@ -898,6 +901,48 @@
   // elev med et ANDET navn, spørges der om det er samme person (så bruges den
   // eksisterende elev) eller en ny person, fx en søskende (så oprettes en ny
   // elev, der kobles på samme login, hvis mailen allerede har et login).
+  // Ret en elevs oplysninger (navn, mail, telefon, instrument) — fx tilføje
+  // mailen senere til en elev, der blev oprettet uden.
+  function wireEditStudentForm(container, st, after) {
+    container.innerHTML =
+      '<div class="bf-grid">' +
+      '<label class="field"><span>Navn</span><input type="text" class="es-name" value="' + escHtml(st.name || "") + '"></label>' +
+      '<label class="field"><span>Mailadresse</span><input type="email" class="es-email" value="' + escHtml(st.email || "") + '"></label>' +
+      '<label class="field"><span>Telefon</span><input type="tel" class="es-phone" value="' + escHtml(st.phone || "") + '"></label>' +
+      '<label class="field"><span>Instrument / ønsker</span><input type="text" class="es-instrument" value="' + escHtml(st.instrument_onske || "") + '"></label>' +
+      "</div>" +
+      '<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">' +
+      '<button type="button" class="btn btn-primary btn-small es-save">Gem oplysninger</button>' +
+      '<button type="button" class="btn-text es-cancel">Annullér</button></div>';
+    container.hidden = false;
+    container.querySelector(".es-cancel").addEventListener("click", () => { container.hidden = true; });
+    container.querySelector(".es-save").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      const upd = {
+        name: container.querySelector(".es-name").value.trim(),
+        email: container.querySelector(".es-email").value.trim() || null,
+        phone: container.querySelector(".es-phone").value.trim() || null,
+        instrument_onske: container.querySelector(".es-instrument").value.trim() || null,
+      };
+      if (!upd.name) { toast("Navnet må ikke være tomt."); return; }
+      if (upd.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(upd.email)) { toast("Mailadressen ser ikke rigtig ud."); return; }
+      const emailChanged = (st.email || null) !== upd.email;
+      const hasAccount = !!profileForStudent(st.id);
+      btn.disabled = true;
+      const { error } = await sb.from("students").update(upd).eq("id", st.id);
+      btn.disabled = false;
+      if (error) { toast("Kunne ikke gemme: " + escHtml(error.message)); return; }
+      Object.assign(st, upd);
+      container.hidden = true;
+      await refreshLessonsAndStudents();
+      renderAllViews();
+      toast("Oplysninger gemt for " + escHtml(upd.name) + "." +
+        (emailChanged && hasAccount ? " Bemærk: eleven har allerede en konto — den logger stadig ind med den gamle mail." : "") +
+        (emailChanged && !hasAccount && upd.email ? " Du kan nu oprette en konto til eleven." : ""));
+      if (after) after();
+    });
+  }
+
   async function updatePricesIfGiven(studentId, info) {
     const upd = {};
     if (info.price !== null) upd.lesson_price = info.price;
@@ -905,8 +950,12 @@
     if (Object.keys(upd).length) await sb.from("students").update(upd).eq("id", studentId);
   }
   async function createStudent(info) {
-    const { data: existingRows } = await sb.from("students").select("id,name").eq("email", info.email);
-    const existing = (existingRows || [])[0] || null;
+    // Mail er valgfri (2026-11-27) — uden mail er der ingen søskende-/samme-mail-kontrol.
+    let existing = null;
+    if (info.email) {
+      const { data: existingRows } = await sb.from("students").select("id,name").eq("email", info.email);
+      existing = (existingRows || [])[0] || null;
+    }
     if (existing && existing.name.toLowerCase() === info.name.toLowerCase()) {
       await updatePricesIfGiven(existing.id, info);
       return { id: existing.id, message: existing.name + " findes allerede som elev." };
@@ -925,7 +974,7 @@
       sharedWith = existing.name;
     }
     const { data: newStu, error } = await sb.from("students")
-      .insert({ name: info.name, email: info.email, phone: info.phone || null, instrument_onske: info.instrument || null, lesson_price: info.price, lesson_price_home: info.priceHome })
+      .insert({ name: info.name, email: info.email || null, phone: info.phone || null, instrument_onske: info.instrument || null, lesson_price: info.price, lesson_price_home: info.priceHome })
       .select().single();
     if (error) { toast("Kunne ikke oprette eleven: " + escHtml(error.message)); return null; }
     if (sharedWith) {
@@ -1014,11 +1063,18 @@
         (toBill > 0 ? '<span class="tag tag-tobill">' + toBill + " til fakturering</span>" : "") + "</span>" +
         priceEditHtml(st) +
         (st.phone ? '<a class="btn-text" style="text-decoration:none;" href="tel:' + escHtml(st.phone) + '">📞 ' + escHtml(st.phone) + "</a>" : "") +
-        '<a class="btn-text" style="text-decoration:none;" href="mailto:' + escHtml(st.email) + '">✉ ' + escHtml(st.email) + "</a>" +
+        (st.email ? '<a class="btn-text" style="text-decoration:none;" href="mailto:' + escHtml(st.email) + '">✉ ' + escHtml(st.email) + "</a>" : '<span style="font-size:12.5px;color:var(--ink-faint);">Ingen mail</span>') +
+        '<button class="btn-text edit-student-toggle">Rediger</button>' +
         '<button class="btn-text view-student-page">Se elevens side</button>' +
         '<span class="account-ctrl" style="white-space:nowrap;"></span>';
       wireAccountCtrl(row.querySelector(".account-ctrl"), st);
       wirePriceEdit(row, st);
+      row.insertAdjacentHTML("beforeend", '<div class="edit-student-form book-form" hidden style="flex-basis:100%;"></div>');
+      row.querySelector(".edit-student-toggle").addEventListener("click", () => {
+        const f = row.querySelector(".edit-student-form");
+        if (!f.hidden) { f.hidden = true; return; }
+        wireEditStudentForm(f, st);
+      });
       row.querySelector(".view-student-page").addEventListener("click", () => showStudentPage(st.id, "view"));
       list.appendChild(row);
     });
@@ -1041,7 +1097,9 @@
   // med, som funktionerne bruger til at bekræfte at det rent faktisk er læreren.
   function wireAccountCtrl(ctrl, student) {
     const prof = profileForStudent(student.id);
-    if (!prof) {
+    if (!prof && !student.email) {
+      ctrl.innerHTML = '<span style="font-size:11.5px;color:var(--ink-faint);">Tilføj mail for at oprette konto</span>';
+    } else if (!prof) {
       ctrl.innerHTML = '<button class="btn-text create-account-btn">Opret konto</button>';
       ctrl.querySelector(".create-account-btn").addEventListener("click", () => createStudentAccount(student, ctrl));
     } else if (!prof.invited_at) {
@@ -1630,7 +1688,7 @@
       '<p style="font-size:11.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Send direkte til ' + a.student.name.split(" ")[0] + "</p>" +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
       (a.student.phone ? '<a class="btn btn-ghost btn-small" style="text-decoration:none;" href="tel:' + a.student.phone + '">📞 ' + a.student.phone + "</a>" : "") +
-      '<a class="btn btn-ghost btn-small" style="text-decoration:none;" href="mailto:' + a.student.email + '">✉ ' + a.student.email + "</a>" +
+      (a.student.email ? '<a class="btn btn-ghost btn-small" style="text-decoration:none;" href="mailto:' + escHtml(a.student.email) + '">✉ ' + escHtml(a.student.email) + "</a>" : "") +
       "</div></div>" +
       '<p style="font-size:11.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--ink-faint);margin:18px 0 0;">Materiale til ' + a.student.name.split(" ")[0] + " — " + formatDate(viewIso || isoToday()) + "</p>" +
       '<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">' +
@@ -1859,6 +1917,13 @@
     document.getElementById("stu-focus-name").textContent = st.name;
     document.getElementById("stu-focus-sub").textContent =
       next ? "Næste lektion: " + lessonWhenLabel(next) + (next.lesson_date === isoToday() ? " (i dag)" : "") + (next.location ? " · " + next.location : "") : "Ingen lektion booket";
+    const editForm = document.getElementById("stu-edit-form");
+    editForm.hidden = true;
+    document.getElementById("stu-edit-toggle").onclick = () => {
+      if (!editForm.hidden) { editForm.hidden = true; return; }
+      wireEditStudentForm(editForm, st);
+    };
+    document.getElementById("stu-focus-sub").textContent += st.email ? " · " + st.email : " · ingen mail endnu";
     const priceEl = document.getElementById("stu-focus-price");
     priceEl.innerHTML = priceEditHtml(st);
     wirePriceEdit(priceEl, st, () => renderStudentFocus({ student: st }));
