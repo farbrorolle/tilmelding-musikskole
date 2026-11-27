@@ -490,7 +490,8 @@
             <div><h2 id="stu-focus-name" style="font-size:26px;font-weight:500;"></h2><p id="stu-focus-sub" style="color:var(--ink-soft);font-size:13.5px;margin-top:4px;"></p></div>
             <div id="stu-focus-price"></div>
           </div>
-          <div style="margin:-6px 0 14px;"><button type="button" class="btn-text" id="stu-edit-toggle">Rediger oplysninger (navn, mail, telefon)</button>
+          <div style="margin:-6px 0 14px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;"><span>Elevkonto: <span id="stu-focus-account" class="account-ctrl"></span></span><button type="button" class="btn-text" id="stu-edit-toggle">Rediger oplysninger (navn, mail, telefon)</button></div>
+          <div>
             <div id="stu-edit-form" class="book-form" hidden></div>
           </div>
           <div class="stu-subtabs" role="tablist" aria-label="Vælg hvad du vil gøre">
@@ -938,7 +939,7 @@
       renderAllViews();
       toast("Oplysninger gemt for " + escHtml(upd.name) + "." +
         (emailChanged && hasAccount ? " Bemærk: eleven har allerede en konto — den logger stadig ind med den gamle mail." : "") +
-        (emailChanged && !hasAccount && upd.email ? " Du kan nu oprette en konto til eleven." : ""));
+        (emailChanged && !hasAccount && upd.email ? " Du kan nu sende en invitation til eleven." : ""));
       if (after) after();
     });
   }
@@ -1098,10 +1099,16 @@
   function wireAccountCtrl(ctrl, student) {
     const prof = profileForStudent(student.id);
     if (!prof && !student.email) {
-      ctrl.innerHTML = '<span style="font-size:11.5px;color:var(--ink-faint);">Tilføj mail for at oprette konto</span>';
+      ctrl.innerHTML = '<span style="font-size:11.5px;color:var(--ink-faint);">Tilføj mail for at sende invitation</span>';
     } else if (!prof) {
-      ctrl.innerHTML = '<button class="btn-text create-account-btn">Opret konto</button>';
-      ctrl.querySelector(".create-account-btn").addEventListener("click", () => createStudentAccount(student, ctrl));
+      // Ét klik (2026-11-27): opretter kontoen OG sender invitationen. Eleven
+      // behøver ingen booket lektion for at få adgang til sin side.
+      ctrl.innerHTML = '<button class="btn-text create-account-btn">Send invitation</button>';
+      ctrl.querySelector(".create-account-btn").addEventListener("click", async () => {
+        if (!confirm("Send invitation til " + student.name + " (" + student.email + ")?\n\nEleven får en mail med et link, hvor de selv vælger en adgangskode og derefter kan logge ind på deres side.")) return;
+        const ok = await createStudentAccount(student, ctrl, true);
+        if (ok) await sendAccountInvite(student, ctrl);
+      });
     } else if (!prof.invited_at) {
       ctrl.innerHTML = '<button class="btn-text send-invite-btn">Send invitation</button>';
       ctrl.querySelector(".send-invite-btn").addEventListener("click", () => sendAccountInvite(student, ctrl));
@@ -1113,7 +1120,7 @@
     }
   }
 
-  async function createStudentAccount(student, ctrl) {
+  async function createStudentAccount(student, ctrl, quiet) {
     ctrl.innerHTML = '<span style="font-size:11.5px;color:var(--ink-faint);">Opretter…</span>';
     let data = null;
     try {
@@ -1125,6 +1132,13 @@
       data = await res.json();
     } catch (err) {
       toast("Kunne ikke oprette konto — prøv igen.");
+    }
+    // Ny konto → fortsæt direkte til invitationen. Var mailen allerede i brug
+    // (søskende/eksisterende konto), har familien allerede en adgangskode —
+    // så sendes der ingen "vælg adgangskode"-mail automatisk.
+    if (data && data.ok && quiet && !data.linked_to_existing_account && !data.already_existed) {
+      await refreshElevProfiles();
+      return true;
     }
     if (data && data.ok) {
       // linked_to_existing_account: mailen tilhørte allerede en søskendes
@@ -1142,6 +1156,7 @@
     }
     await refreshElevProfiles();
     wireAccountCtrl(ctrl, student);
+    return false;
   }
 
   async function sendAccountInvite(student, ctrl) {
@@ -1158,7 +1173,7 @@
       toast("Kunne ikke sende invitation — prøv igen.");
     }
     if (data && data.ok) {
-      toast("Invitation sendt til " + student.name + ".");
+      toast("Invitation sendt til " + escHtml(student.name) + " (" + escHtml(student.email) + "). Eleven vælger selv en adgangskode via linket i mailen.");
     } else if (data) {
       toast("Kunne ikke sende invitation: " + (data.error || "ukendt fejl"));
     }
@@ -1917,6 +1932,7 @@
     document.getElementById("stu-focus-name").textContent = st.name;
     document.getElementById("stu-focus-sub").textContent =
       next ? "Næste lektion: " + lessonWhenLabel(next) + (next.lesson_date === isoToday() ? " (i dag)" : "") + (next.location ? " · " + next.location : "") : "Ingen lektion booket";
+    wireAccountCtrl(document.getElementById("stu-focus-account"), st);
     const editForm = document.getElementById("stu-edit-form");
     editForm.hidden = true;
     document.getElementById("stu-edit-toggle").onclick = () => {
